@@ -6,15 +6,17 @@ import java.util.Date
 @Document("collProductos")
 data class Producto (
     @BsonId
-    val NºProducto: String?,
+    val numeroProducto: String?,
 
-    var Articulo: String?,
+    var articulo: String?,
 
     var descripcion: String? = null,
 
-    var precio: String,
+    var precio: Double,
 
-    var stock: String ,
+    var stock: Int,
+
+    var imagenUrl: String? = null,
 
     val fechaCreacion: Date?,
 

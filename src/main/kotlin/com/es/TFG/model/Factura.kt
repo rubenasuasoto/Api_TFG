@@ -5,10 +5,8 @@ import java.util.Date
 
 data class Factura(
     @BsonId
-    val NºFactura: String,
+    val numeroFactura: String,
     val fecha: Date
+)
 
-) {
 
-
-}
