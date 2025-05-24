@@ -1,5 +1,6 @@
 ﻿package com.es.TFG.service
 
+import com.es.Api_Rest_Segura2.error.exception.BadRequestException
 import com.es.Api_Rest_Segura2.error.exception.NotFoundException
 import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
 import com.es.TFG.dto.PedidoDTO
@@ -26,12 +27,22 @@ class PedidoService {
         val producto = productoRepository.findById(dto.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${dto.numeroProducto} no encontrado") }
 
-        // Crear factura básica
+        if (producto.stock <= 0) {
+            throw BadRequestException("Producto sin stock disponible")
+        }
+
+        // Descontar stock
+        producto.stock -= 1
+        producto.fechaActualizacion = Date.from(Instant.now())
+        productoRepository.save(producto)
+
+        // Crear factura
         val factura = Factura(
             numeroFactura = UUID.randomUUID().toString(),
             fecha = Date.from(Instant.now())
         )
 
+        // Crear pedido
         val nuevoPedido = Pedido(
             numeroPedido = null,
             numeroProducto = producto.numeroProducto ?: dto.numeroProducto,
@@ -44,17 +55,27 @@ class PedidoService {
         return pedidoRepository.insert(nuevoPedido)
     }
 
+
     fun findPedidosByUsuario(usuario: String): List<Pedido> =
         pedidoRepository.findPedidosByUsuario(usuario)
 
     fun findAll(): List<Pedido> = pedidoRepository.findAll()
 
     fun deletePedido(id: String) {
-        if (!pedidoRepository.existsById(id)) {
-            throw NotFoundException("Pedido con id $id no encontrado")
-        }
+        val pedido = pedidoRepository.findById(id)
+            .orElseThrow { NotFoundException("Pedido con id $id no encontrado") }
+
+        // Restaurar stock del producto
+        val producto = productoRepository.findById(pedido.numeroProducto)
+            .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
+
+        producto.stock += 1
+        producto.fechaActualizacion = Date.from(Instant.now())
+        productoRepository.save(producto)
+
         pedidoRepository.deleteById(id)
     }
+
 
     fun deletePedidoSelf(id: String, usuario: String) {
         val pedido = pedidoRepository.findById(id)
@@ -64,6 +85,15 @@ class PedidoService {
             throw UnauthorizedException("No tienes permiso para eliminar este pedido")
         }
 
+        // Devolver stock del producto
+        val producto = productoRepository.findById(pedido.numeroProducto)
+            .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
+
+        producto.stock += 1
+        producto.fechaActualizacion = Date.from(Instant.now())
+        productoRepository.save(producto)
+
         pedidoRepository.deleteById(id)
     }
+
 }
