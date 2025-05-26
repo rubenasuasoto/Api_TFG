@@ -38,16 +38,20 @@ class SecurityConfig {
                 // Endpoints Publicos
                 .requestMatchers(HttpMethod.POST,"/usuarios/login").permitAll()
                 .requestMatchers(HttpMethod.POST,"/usuarios/register").permitAll()
-                // Endpoints tareas
-                .requestMatchers(HttpMethod.POST,"/tareas/self").authenticated()
-                .requestMatchers(HttpMethod.GET,"/tareas/self").authenticated()
-                .requestMatchers(HttpMethod.DELETE,"/tareas/self/{id}").authenticated()
-                .requestMatchers(HttpMethod.PUT,"/tareas/self/{id}").authenticated()
+                // Endpoints productos
+                .requestMatchers(HttpMethod.GET, "/productos").permitAll()
+                .requestMatchers(HttpMethod.POST, "/productos").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/productos/{id}").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/productos/{id}").hasRole("ADMIN")
+                // Endpoints pedidos
+                .requestMatchers(HttpMethod.POST, "/pedidos/self").authenticated()
+                .requestMatchers(HttpMethod.GET, "/pedidos/self").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/pedidos/self/{id}").authenticated()
 
-                .requestMatchers(HttpMethod.DELETE,"/tareas/{id}").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT,"/tareas/{id}").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET,"/tareas").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST,"/tareas").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/pedidos").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/pedidos").hasRole("ADMIN") // si usas también pedidos por admin
+                .requestMatchers(HttpMethod.DELETE, "/pedidos/{id}").hasRole("ADMIN")
+
 
                 .anyRequest().authenticated()}
             //Los recursos protegidos y publicos
