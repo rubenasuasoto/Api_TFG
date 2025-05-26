@@ -1,7 +1,7 @@
-package com.es.Api_Rest_Segura2.dto
+package com.es.TFG.dto
 
 
-import com.es.Api_Rest_Segura2.model.Direccion
+import com.es.TFG.model.Direccion
 
 
 data class UsuarioRegisterDTO(

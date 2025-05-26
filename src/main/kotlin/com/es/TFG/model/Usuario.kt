@@ -1,7 +1,6 @@
-package com.es.Api_Rest_Segura2.model
+package com.es.TFG.model
 
 import org.bson.codecs.pojo.annotations.BsonId
-import org.bson.types.ObjectId
 import org.springframework.data.mongodb.core.mapping.Document
 import java.util.Date
 

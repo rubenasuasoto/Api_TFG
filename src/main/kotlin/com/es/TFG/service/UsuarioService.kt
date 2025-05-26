@@ -1,13 +1,13 @@
-package com.es.Api_Rest_Segura2.service
+package com.es.TFG.service
 
 
-import com.es.Api_Rest_Segura2.dto.UsuarioDTO
-import com.es.Api_Rest_Segura2.dto.UsuarioRegisterDTO
+import com.es.TFG.dto.UsuarioDTO
+import com.es.TFG.dto.UsuarioRegisterDTO
 import com.es.Api_Rest_Segura2.error.exception.BadRequestException
 import com.es.Api_Rest_Segura2.error.exception.ConflictException
 import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
-import com.es.Api_Rest_Segura2.model.Usuario
-import com.es.Api_Rest_Segura2.repository.UsuarioRepository
+import com.es.TFG.model.Usuario
+import com.es.TFG.repository.UsuarioRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails

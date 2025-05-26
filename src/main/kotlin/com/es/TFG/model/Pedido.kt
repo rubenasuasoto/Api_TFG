@@ -1,6 +1,5 @@
 ﻿package com.es.TFG.model
 
-import com.es.Api_Rest_Segura2.model.Usuario
 import org.bson.codecs.pojo.annotations.BsonId
 import org.springframework.data.mongodb.core.mapping.Document
 import java.time.Instant

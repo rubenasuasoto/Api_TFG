@@ -1,4 +1,4 @@
-﻿package com.es.Api_Rest_Segura2.model
+﻿package com.es.TFG.model
 
 data class Direccion(
 

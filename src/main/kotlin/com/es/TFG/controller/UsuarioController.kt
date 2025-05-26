@@ -1,13 +1,13 @@
-﻿package com.es.Api_Rest_Segura2.controller
+﻿package com.es.TFG.controller
 
 
 
 import com.es.Api_Rest_Segura2.dto.LoginUsuarioDTO
-import com.es.Api_Rest_Segura2.dto.UsuarioDTO
-import com.es.Api_Rest_Segura2.dto.UsuarioRegisterDTO
+import com.es.TFG.dto.UsuarioDTO
+import com.es.TFG.dto.UsuarioRegisterDTO
 import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
-import com.es.Api_Rest_Segura2.service.TokenService
-import com.es.Api_Rest_Segura2.service.UsuarioService
+import com.es.TFG.service.TokenService
+import com.es.TFG.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
