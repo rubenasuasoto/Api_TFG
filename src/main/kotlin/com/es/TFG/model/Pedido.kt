@@ -3,6 +3,7 @@
 import com.es.Api_Rest_Segura2.model.Usuario
 import org.bson.codecs.pojo.annotations.BsonId
 import org.springframework.data.mongodb.core.mapping.Document
+import java.time.Instant
 import java.util.Date
 
 @Document("collPedidos")
@@ -18,5 +19,7 @@ data class Pedido (
 
     var precioFinal: Double,
 
-    var factura: Factura
+    var factura: Factura,
+
+    val fechaCreacion: Date = Date.from(Instant.now())
 )

@@ -5,11 +5,14 @@ import com.es.Api_Rest_Segura2.error.exception.NotFoundException
 import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
 import com.es.TFG.dto.PedidoDTO
 import com.es.TFG.model.Factura
+import com.es.TFG.model.LogSistema
 import com.es.TFG.model.Pedido
+import com.es.TFG.repository.LogSistemaRepository
 import com.es.TFG.repository.PedidoRepository
 import com.es.TFG.repository.ProductoRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import java.time.Duration
 import java.time.Instant
 import java.util.Date
 import java.util.UUID
@@ -22,6 +25,10 @@ class PedidoService {
 
     @Autowired
     private lateinit var productoRepository: ProductoRepository
+
+    @Autowired
+    private lateinit var logSistemaRepository: LogSistemaRepository
+
 
     fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
         val producto = productoRepository.findById(dto.numeroProducto)
@@ -51,6 +58,14 @@ class PedidoService {
             precioFinal = producto.precio,
             factura = factura
         )
+        logSistemaRepository.save(
+            LogSistema(
+                usuario = username,
+                accion = "CREACIÓN PEDIDO",
+                referencia = nuevoPedido.numeroPedido!!
+            )
+        )
+
 
         return pedidoRepository.insert(nuevoPedido)
     }
@@ -65,7 +80,8 @@ class PedidoService {
         val pedido = pedidoRepository.findById(id)
             .orElseThrow { NotFoundException("Pedido con id $id no encontrado") }
 
-        // Restaurar stock del producto
+        // NOTA: Admin no tiene restricción de tiempo para cancelar
+
         val producto = productoRepository.findById(pedido.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
 
@@ -75,6 +91,7 @@ class PedidoService {
 
         pedidoRepository.deleteById(id)
     }
+
 
 
     fun deletePedidoSelf(id: String, usuario: String) {
@@ -85,7 +102,8 @@ class PedidoService {
             throw UnauthorizedException("No tienes permiso para eliminar este pedido")
         }
 
-        // Devolver stock del producto
+        verificarPlazoCancelacion(pedido.fechaCreacion)
+
         val producto = productoRepository.findById(pedido.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
 
@@ -95,5 +113,16 @@ class PedidoService {
 
         pedidoRepository.deleteById(id)
     }
+
+    private fun verificarPlazoCancelacion(fechaCreacion: Date) {
+        val tresDiasEnMilis = Duration.ofDays(3).toMillis()
+        val ahora = Instant.now().toEpochMilli()
+        val fechaPedido = fechaCreacion.toInstant().toEpochMilli()
+
+        if (ahora - fechaPedido > tresDiasEnMilis) {
+            throw BadRequestException("No se puede cancelar el pedido: plazo de 3 días expirado")
+        }
+    }
+
 
 }
