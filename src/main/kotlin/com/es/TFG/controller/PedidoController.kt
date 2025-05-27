@@ -1,6 +1,5 @@
 ﻿package com.es.TFG.controller
 
-import com.es.TFG.dto.PedidoDTO
 import com.es.TFG.model.Pedido
 import com.es.TFG.service.PedidoService
 import org.springframework.beans.factory.annotation.Autowired
@@ -24,7 +23,7 @@ class PedidoController {
     private lateinit var pedidoService: PedidoService
 
     @PostMapping("/self")
-    fun crearPedidoSelf(@RequestBody dto: PedidoDTO): ResponseEntity<Pedido> {
+    fun crearPedidoSelf(@RequestBody dto: Pedido): ResponseEntity<Pedido> {
         val username = SecurityContextHolder.getContext().authentication.name
         val pedido = pedidoService.insertPedidoSelf(dto, username)
         return ResponseEntity.status(HttpStatus.CREATED).body(pedido)

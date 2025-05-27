@@ -3,7 +3,6 @@
 import com.es.Api_Rest_Segura2.error.exception.BadRequestException
 import com.es.Api_Rest_Segura2.error.exception.NotFoundException
 import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
-import com.es.TFG.dto.PedidoDTO
 import com.es.TFG.model.Factura
 import com.es.TFG.model.LogSistema
 import com.es.TFG.model.Pedido
@@ -30,7 +29,7 @@ class PedidoService {
     private lateinit var logSistemaRepository: LogSistemaRepository
 
 
-    fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
+    fun insertPedidoSelf(dto: Pedido, username: String): Pedido {
         val producto = productoRepository.findById(dto.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${dto.numeroProducto} no encontrado") }
 
