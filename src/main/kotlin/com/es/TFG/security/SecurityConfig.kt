@@ -30,36 +30,33 @@ class SecurityConfig {
     @Autowired
     private lateinit var rsaKeys: RSAKeysProperties
     @Bean
-    fun securityFilterChain(http: HttpSecurity):SecurityFilterChain {
-
+    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
-            .csrf{csrf -> csrf.disable()}
-            .authorizeHttpRequests{auth ->auth
-                // Endpoints Publicos
-                .requestMatchers(HttpMethod.POST,"/usuarios/login").permitAll()
-                .requestMatchers(HttpMethod.POST,"/usuarios/register").permitAll()
-                // Endpoints productos
-                .requestMatchers(HttpMethod.GET, "/productos").permitAll()
-                .requestMatchers(HttpMethod.POST, "/productos").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/productos/{id}").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/productos/{id}").hasRole("ADMIN")
-                // Endpoints pedidos
-                .requestMatchers(HttpMethod.POST, "/pedidos/self").authenticated()
-                .requestMatchers(HttpMethod.GET, "/pedidos/self").authenticated()
-                .requestMatchers(HttpMethod.DELETE, "/pedidos/self/{id}").authenticated()
-
-                .requestMatchers(HttpMethod.GET, "/pedidos").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST, "/pedidos").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/pedidos/{id}").hasRole("ADMIN")
-
-
-                .anyRequest().authenticated()}
-            //Los recursos protegidos y publicos
-            .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
-            .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .httpBasic(Customizer.withDefaults())
+            .csrf { it.disable() }
+            .authorizeHttpRequests { auth ->
+                auth
+                    .requestMatchers(HttpMethod.POST, "/usuarios/login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/usuarios/register").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/productos").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/productos").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/productos/{id}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/productos/{id}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/pedidos/self").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/pedidos/self").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/pedidos/self/{id}").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/pedidos").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/pedidos").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/pedidos/{id}").hasRole("ADMIN")
+                    .anyRequest().authenticated()
+            }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .oauth2ResourceServer { oauth2 ->
+                oauth2
+                    .jwt(Customizer.withDefaults())
+            }
             .build()
     }
+
     @Bean
     fun passwordEncoder() : PasswordEncoder{
         return BCryptPasswordEncoder()
