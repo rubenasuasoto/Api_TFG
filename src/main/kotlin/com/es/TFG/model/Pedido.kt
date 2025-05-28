@@ -8,7 +8,7 @@ import java.util.Date
 @Document("collPedidos")
 data class Pedido (
 
-
+    @BsonId
     val numeroPedido: String?,
 
     val numeroProducto: String,

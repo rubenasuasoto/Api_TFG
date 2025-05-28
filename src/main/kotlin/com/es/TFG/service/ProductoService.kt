@@ -20,7 +20,7 @@ class ProductoService {
         }
 
         val nuevoProducto = producto.copy(
-            numeroProducto = null,
+            numeroProducto = producto.numeroProducto,
             fechaCreacion = Date.from(Instant.now()),
             fechaActualizacion = Date.from(Instant.now())
         )
