@@ -8,6 +8,7 @@ import java.util.Date
 @Document("collPedidos")
 data class Pedido (
 
+
     val numeroPedido: String?,
 
     val numeroProducto: String,

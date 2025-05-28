@@ -5,6 +5,8 @@ import org.springframework.data.mongodb.core.mapping.Document
 import java.util.Date
 @Document("collProductos")
 data class Producto (
+    @BsonId
+    val id: String?,
 
     val numeroProducto: String?,
 
