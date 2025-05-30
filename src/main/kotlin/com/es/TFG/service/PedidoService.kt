@@ -52,7 +52,7 @@ class PedidoService {
         // Crear pedido
         val nuevoPedido = Pedido(
             numeroPedido = null,
-            numeroProducto = producto.numeroProducto ?: dto.numeroProducto,
+            numeroProducto = producto.numeroProducto ,
             usuario = username,
             articulo = producto.articulo,
             precioFinal = producto.precio,
