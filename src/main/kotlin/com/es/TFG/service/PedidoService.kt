@@ -31,7 +31,7 @@ class PedidoService {
 
 
     fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
-        val producto = productoRepository.findById(dto.numeroProducto)
+        val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${dto.numeroProducto} no encontrado") }
 
         if (producto.stock <= 0) {
@@ -82,7 +82,7 @@ class PedidoService {
 
         // NOTA: Admin no tiene restricción de tiempo para cancelar
 
-        val producto = productoRepository.findById(pedido.numeroProducto)
+        val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
 
         producto.stock += 1
@@ -104,7 +104,7 @@ class PedidoService {
 
         verificarPlazoCancelacion(pedido.fechaCreacion)
 
-        val producto = productoRepository.findById(pedido.numeroProducto)
+        val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
 
         producto.stock += 1
@@ -126,3 +126,5 @@ class PedidoService {
 
 
 }
+
+

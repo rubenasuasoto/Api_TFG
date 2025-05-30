@@ -11,9 +11,9 @@ data class Pedido (
     @BsonId
     val numeroPedido: String?,
 
-    val numeroProducto: String,
+    val numeroProducto: String?,
 
-    val usuario: String ,
+    val usuario: String,
 
     var articulo: String?,
 
