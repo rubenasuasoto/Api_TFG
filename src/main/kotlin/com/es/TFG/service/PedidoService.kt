@@ -49,26 +49,31 @@ class PedidoService {
             fecha = Date.from(Instant.now())
         )
 
-        // Crear pedido
+        // Crear pedido sin número
         val nuevoPedido = Pedido(
             numeroPedido = null,
-            numeroProducto = producto.numeroProducto ,
+            numeroProducto = producto.numeroProducto,
             usuario = username,
             articulo = producto.articulo,
             precioFinal = producto.precio,
             factura = factura
         )
+
+        // Guardar pedido para que se genere el ID
+        val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
+
+        // Ahora sí, log con ID real
         logSistemaRepository.save(
             LogSistema(
                 usuario = username,
                 accion = "CREACIÓN PEDIDO",
-                referencia = nuevoPedido.numeroPedido!!
+                referencia = pedidoGuardado.numeroPedido!!
             )
         )
 
-
-        return pedidoRepository.insert(nuevoPedido)
+        return pedidoGuardado
     }
+
 
 
     fun findPedidosByUsuario(usuario: String): List<Pedido> =
