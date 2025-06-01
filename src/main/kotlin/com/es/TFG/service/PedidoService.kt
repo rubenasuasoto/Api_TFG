@@ -59,19 +59,18 @@ class PedidoService {
             factura = factura
         )
 
-        // Guardar pedido para que se genere el ID
         val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
 
-        // Ahora sí, log con ID real
         logSistemaRepository.save(
             LogSistema(
                 usuario = username,
                 accion = "CREACIÓN PEDIDO",
-                referencia = pedidoGuardado.numeroPedido!!
+                referencia = pedidoGuardado.numeroPedido ?: "SIN ID"
             )
         )
 
         return pedidoGuardado
+
     }
 
 
