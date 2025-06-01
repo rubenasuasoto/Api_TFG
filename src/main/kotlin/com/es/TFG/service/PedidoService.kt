@@ -61,13 +61,7 @@ class PedidoService {
 
         val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
 
-        logSistemaRepository.save(
-            LogSistema(
-                usuario = username,
-                accion = "CREACIÓN PEDIDO",
-                referencia = pedidoGuardado.numeroPedido ?: "SIN ID"
-            )
-        )
+
 
         return pedidoGuardado
 
