@@ -51,7 +51,7 @@ class PedidoService {
 
         // Crear pedido sin número
         val nuevoPedido = Pedido(
-            numeroPedido = null,
+            numeroPedido = UUID.randomUUID().toString(),
             numeroProducto = producto.numeroProducto,
             usuario = username,
             articulo = producto.articulo,
