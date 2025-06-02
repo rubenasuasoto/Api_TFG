@@ -8,7 +8,7 @@ data class Producto (
     @BsonId
     val id: String?,
 
-    val numeroProducto: String?,
+    val numeroProducto: String,
 
     var articulo: String?,
 
