@@ -3,6 +3,7 @@
 import com.es.Api_Rest_Segura2.error.exception.BadRequestException
 import com.es.Api_Rest_Segura2.error.exception.NotFoundException
 import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
+import com.es.TFG.dto.PedidoDTO
 import com.es.TFG.model.Factura
 import com.es.TFG.model.LogSistema
 import com.es.TFG.model.Pedido
@@ -29,13 +30,19 @@ class PedidoService {
     private lateinit var logSistemaRepository: LogSistemaRepository
 
 
-    fun insertPedidoSelf(pedido: Pedido, username: String): Pedido {
-        val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
-            .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
+    fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
+        val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
+            .orElseThrow { NotFoundException("Producto con id ${dto.numeroProducto} no encontrado") }
 
         if (producto.stock <= 0) {
             throw BadRequestException("Producto sin stock disponible")
         }
+
+        // Descontar stock
+        producto.stock -= 1
+        producto.fechaActualizacion = Date.from(Instant.now())
+        productoRepository.save(producto)
+
 
         // Crear factura
         val factura = Factura(
@@ -46,10 +53,10 @@ class PedidoService {
         // Crear pedido sin número
         val nuevoPedido = Pedido(
             numeroPedido = UUID.randomUUID().toString(),
-            numeroProducto = pedido.numeroProducto,
+            numeroProducto = producto.numeroProducto,
             usuario = username,
-            articulo = pedido.articulo,
-            precioFinal = pedido.precioFinal,
+            articulo = producto.articulo,
+            precioFinal = producto.precio,
             factura = factura
         )
 
