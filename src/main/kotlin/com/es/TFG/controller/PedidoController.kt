@@ -24,9 +24,9 @@ class PedidoController {
     private lateinit var pedidoService: PedidoService
 
     @PostMapping("/self")
-    fun crearPedidoSelf(@RequestBody dto: PedidoDTO): ResponseEntity<Pedido> {
+    fun crearPedidoSelf(@RequestBody pedido: Pedido): ResponseEntity<Pedido> {
         val username = SecurityContextHolder.getContext().authentication.name
-        val pedido = pedidoService.insertPedidoSelf(dto, username)
+        val pedido = pedidoService.insertPedidoSelf(pedido, username)
         return ResponseEntity.status(HttpStatus.CREATED).body(pedido)
     }
 

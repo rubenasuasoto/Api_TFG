@@ -30,9 +30,9 @@ class PedidoService {
     private lateinit var logSistemaRepository: LogSistemaRepository
 
 
-    fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
-        val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
-            .orElseThrow { NotFoundException("Producto con id ${dto.numeroProducto} no encontrado") }
+    fun insertPedidoSelf(pedido: Pedido, username: String): Pedido {
+        val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
+            .orElseThrow { NotFoundException("Producto con id ${pedido.numeroProducto} no encontrado") }
 
         if (producto.stock <= 0) {
             throw BadRequestException("Producto sin stock disponible")
@@ -52,16 +52,22 @@ class PedidoService {
         // Crear pedido sin número
         val nuevoPedido = Pedido(
             numeroPedido = UUID.randomUUID().toString(),
-            numeroProducto = producto.numeroProducto,
+            numeroProducto = pedido.numeroProducto,
             usuario = username,
-            articulo = producto.articulo,
-            precioFinal = producto.precio,
+            articulo = pedido.articulo,
+            precioFinal = pedido.precioFinal,
             factura = factura
         )
 
         val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
 
-
+        logSistemaRepository.save(
+            LogSistema(
+                usuario = username,
+                accion = "CREACIÓN PEDIDO",
+                referencia = pedidoGuardado.numeroPedido ?: "SIN ID"
+            )
+        )
 
         return pedidoGuardado
 
