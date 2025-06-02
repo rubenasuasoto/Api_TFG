@@ -1,6 +1,5 @@
 ﻿package com.es.TFG.controller
 
-import com.es.TFG.dto.PedidoDTO
 import com.es.TFG.model.Pedido
 import com.es.TFG.service.PedidoService
 import org.springframework.beans.factory.annotation.Autowired
