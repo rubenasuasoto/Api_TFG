@@ -27,9 +27,10 @@ class PedidoController {
     @PostMapping("/self")
     fun crearPedidoSelf(@RequestBody dto: PedidoDTO ): ResponseEntity<Pedido> {
         val authentication = SecurityContextHolder.getContext().authentication
-            ?: throw UnauthorizedException("No hay usuario autenticado")
+            ?: throw UnauthorizedException("Usuario no autenticado")
 
         val username = authentication.name
+
 
         val pedido = pedidoService.insertPedidoSelf(dto, username)
         return ResponseEntity.status(HttpStatus.CREATED).body(pedido)
