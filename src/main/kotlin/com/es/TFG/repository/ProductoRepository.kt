@@ -8,5 +8,5 @@ import java.util.Optional
 @Repository
 interface ProductoRepository : MongoRepository<Producto, String> {
     fun findProductosByArticulo(articulo: String): List<Producto>
-    fun findProductosBynumeroProducto(numeroProducto: String?): Optional<Producto>
+    fun findProductosBynumeroProducto(numeroProducto: String): Optional<Producto>
 }

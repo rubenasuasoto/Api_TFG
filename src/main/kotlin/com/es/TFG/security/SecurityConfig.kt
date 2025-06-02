@@ -54,6 +54,7 @@ class SecurityConfig {
                 oauth2
                     .jwt(Customizer.withDefaults())
             }
+            .httpBasic(Customizer.withDefaults())
             .build()
     }
 
