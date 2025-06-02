@@ -38,11 +38,6 @@ class PedidoService {
             throw BadRequestException("Producto sin stock disponible")
         }
 
-        // Descontar stock
-        producto.stock -= 1
-        producto.fechaActualizacion = Date.from(Instant.now())
-        productoRepository.save(producto)
-
         // Crear factura
         val factura = Factura(
             numeroFactura = UUID.randomUUID().toString(),
