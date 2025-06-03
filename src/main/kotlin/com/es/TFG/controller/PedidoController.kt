@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -25,14 +26,10 @@ class PedidoController {
     private lateinit var pedidoService: PedidoService
 
     @PostMapping("/self")
-    @PreAuthorize("isAuthenticated()")
-    fun crearPedidoSelf(@RequestBody dto: PedidoDTO): ResponseEntity<Pedido> {
-        requireNotNull(dto) { "PedidoDTO cannot be null" }
-        requireNotNull(dto.numeroProducto) { "numeroProducto cannot be null" }
-        val authentication = SecurityContextHolder.getContext().authentication
-        if (authentication == null || !authentication.isAuthenticated) {
-            throw UnauthorizedException("User not authenticated")
-        }
+    fun crearPedidoSelf(
+        @RequestBody dto: PedidoDTO,
+        authentication: Authentication
+    ): ResponseEntity<Pedido> {
         val currentUsername = authentication.name
         val pedido = pedidoService.insertPedidoSelf(dto, currentUsername)
         return ResponseEntity(pedido, HttpStatus.CREATED)
