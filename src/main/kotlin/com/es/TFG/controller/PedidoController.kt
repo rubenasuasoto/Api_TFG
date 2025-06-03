@@ -25,10 +25,16 @@ class PedidoController {
     private lateinit var pedidoService: PedidoService
 
     @PostMapping("/self")
-    fun crearPedidoSelf(@RequestBody dto: PedidoDTO ): ResponseEntity<Pedido> {
-        val currentUsername = SecurityContextHolder.getContext().authentication.name
+    @PreAuthorize("isAuthenticated()")
+    fun crearPedidoSelf(@RequestBody dto: PedidoDTO): ResponseEntity<Pedido> {
+        requireNotNull(dto) { "PedidoDTO cannot be null" }
+        requireNotNull(dto.numeroProducto) { "numeroProducto cannot be null" }
+        val authentication = SecurityContextHolder.getContext().authentication
+        if (authentication == null || !authentication.isAuthenticated) {
+            throw UnauthorizedException("User not authenticated")
+        }
+        val currentUsername = authentication.name
         val pedido = pedidoService.insertPedidoSelf(dto, currentUsername)
-
         return ResponseEntity(pedido, HttpStatus.CREATED)
     }
     @GetMapping("/self")
