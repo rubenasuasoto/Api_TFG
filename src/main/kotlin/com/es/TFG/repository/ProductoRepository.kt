@@ -9,4 +9,6 @@ import java.util.Optional
 interface ProductoRepository : MongoRepository<Producto, String> {
     fun findProductosByArticulo(articulo: String): List<Producto>
     fun findProductosBynumeroProducto(numeroProducto: String): Optional<Producto>
+
+    fun deletedProductoBynumeroProducto(numeroProducto: String): Optional<Producto>
 }

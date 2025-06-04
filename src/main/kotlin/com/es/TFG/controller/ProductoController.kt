@@ -34,8 +34,8 @@ class ProductoController {
         ResponseEntity.ok(productoService.findAllProductos())
 
     @GetMapping("/{id}")
-    fun getById(@PathVariable id: String): ResponseEntity<Producto> =
-        ResponseEntity.ok(productoService.findById(id))
+    fun getBynumeroProducto(@PathVariable numeroProducto: String): ResponseEntity<Producto> =
+        ResponseEntity.ok(productoService.findProductosBynumeroProducto(numeroProducto))
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

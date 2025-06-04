@@ -29,11 +29,11 @@ class ProductoService {
 
     fun findAllProductos(): List<Producto> = productoRepository.findAll()
 
-    fun findById(id: String): Producto = productoRepository.findById(id)
-        .orElseThrow { NotFoundException("Producto con id $id no encontrado") }
+    fun findProductosBynumeroProducto(numeroProducto: String): Producto = productoRepository.findProductosBynumeroProducto(numeroProducto)
+        .orElseThrow { NotFoundException("Producto con numero $numeroProducto no encontrado") }
 
-    fun updateProducto(id: String, productoActualizado: Producto): Producto {
-        val producto = findById(id)
+    fun updateProducto(numeroProducto: String, productoActualizado: Producto): Producto {
+        val producto = findProductosBynumeroProducto(numeroProducto)
 
         producto.articulo = productoActualizado.articulo ?: producto.articulo
         producto.descripcion = productoActualizado.descripcion ?: producto.descripcion
@@ -45,10 +45,10 @@ class ProductoService {
         return productoRepository.save(producto)
     }
 
-    fun deleteProducto(id: String) {
-        if (!productoRepository.existsById(id)) {
-            throw NotFoundException("Producto con id $id no encontrado")
-        }
-        productoRepository.deleteById(id)
+    fun deleteProducto(numeroProducto: String) {
+        productoRepository.findProductosBynumeroProducto(numeroProducto)
+            .orElseThrow{ NotFoundException("Producto con numero $numeroProducto no encontrado")}
+
+        productoRepository.deletedProductoBynumeroProducto(numeroProducto)
     }
 }
