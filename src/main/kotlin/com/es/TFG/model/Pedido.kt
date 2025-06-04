@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.Date
 
 @Document("collPedidos")
-data class Pedido (
+data class Pedido(
 
     @BsonId
     val numeroPedido: String?,
@@ -20,6 +20,8 @@ data class Pedido (
     var precioFinal: Double,
 
     var factura: Factura,
+
+    var estado: String = "PENDIENTE",  // 🔹 Nuevo campo con valor por defecto
 
     val fechaCreacion: Date = Date.from(Instant.now())
 )

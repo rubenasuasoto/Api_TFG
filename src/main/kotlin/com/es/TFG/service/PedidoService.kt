@@ -73,6 +73,51 @@ class PedidoService {
         return pedidoGuardado
 
     }
+    fun insertPedidoAdmin(pedido: Pedido): Pedido {
+        val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
+            .orElseThrow { NotFoundException("Producto con número ${pedido.numeroProducto} no encontrado") }
+
+        if (producto.stock <= 0) {
+            throw BadRequestException("Producto sin stock disponible")
+        }
+
+        producto.stock -= 1
+        producto.fechaActualizacion = Date.from(Instant.now())
+        productoRepository.save(producto)
+
+        val nuevoPedido = pedido.copy(
+            numeroPedido = UUID.randomUUID().toString(),
+            articulo = producto.articulo,
+            usuario = pedido.usuario,
+            precioFinal = producto.precio,
+            factura = pedido.factura.copy(
+                numeroFactura = UUID.randomUUID().toString(),
+                fecha = Date.from(Instant.now())
+            ),
+            // fechaCreacion se establece automáticamente
+        )
+
+        val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
+
+        logSistemaRepository.save(
+            LogSistema(
+                usuario = pedido.usuario,
+                accion = "CREACIÓN PEDIDO",
+                referencia = pedidoGuardado.numeroPedido ?: "SIN ID"
+            )
+        )
+
+        return pedidoGuardado
+    }
+    fun updateEstadoPedido(id: String, nuevoEstado: String): Pedido {
+        val pedido = pedidoRepository.findById(id)
+            .orElseThrow { NotFoundException("Pedido con id $id no encontrado") }
+
+        pedido.estado = nuevoEstado
+        return pedidoRepository.save(pedido)
+    }
+
+
 
 
 
@@ -80,6 +125,11 @@ class PedidoService {
         pedidoRepository.findPedidosByUsuario(usuario)
 
     fun findAll(): List<Pedido> = pedidoRepository.findAll()
+    fun findById(id: String): Pedido {
+        return pedidoRepository.findById(id)
+            .orElseThrow { NotFoundException("Pedido con id $id no encontrado") }
+    }
+
 
     fun deletePedido(id: String) {
         val pedido = pedidoRepository.findById(id)

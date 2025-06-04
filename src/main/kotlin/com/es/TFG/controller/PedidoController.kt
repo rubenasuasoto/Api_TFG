@@ -1,6 +1,7 @@
 ﻿package com.es.TFG.controller
 
 import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
+import com.es.TFG.dto.EstadoDTO
 import com.es.TFG.dto.PedidoDTO
 import com.es.TFG.model.Pedido
 import com.es.TFG.service.PedidoService
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -61,4 +63,30 @@ class PedidoController {
         pedidoService.deletePedido(id)
         return ResponseEntity.noContent().build()
     }
+    // Obtener pedido por ID (solo admin)
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun getPedidoById(@PathVariable id: String): ResponseEntity<Pedido> {
+        val pedido = pedidoService.findById(id)
+        return ResponseEntity.ok(pedido)
+    }
+
+    // Crear pedido como admin
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    fun createPedidoAdmin(@RequestBody pedido: Pedido): ResponseEntity<Pedido> {
+        val nuevoPedido = pedidoService.insertPedidoAdmin(pedido)
+        return ResponseEntity(nuevoPedido, HttpStatus.CREATED)
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    fun updatePedidoEstado(
+        @PathVariable id: String,
+        @RequestBody nuevoEstado: EstadoDTO
+    ): ResponseEntity<Pedido> {
+        val actualizado = pedidoService.updateEstadoPedido(id, nuevoEstado.estado)
+        return ResponseEntity.ok(actualizado)
+    }
+
 }

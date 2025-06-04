@@ -33,24 +33,24 @@ class ProductoController {
     fun getAll(): ResponseEntity<List<Producto>> =
         ResponseEntity.ok(productoService.findAllProductos())
 
-    @GetMapping("/{id}")
+    @GetMapping("/{numeroProducto}")
     fun getBynumeroProducto(@PathVariable numeroProducto: String): ResponseEntity<Producto> =
         ResponseEntity.ok(productoService.findProductosBynumeroProducto(numeroProducto))
 
-    @PutMapping("/{id}")
+    @PutMapping("/{numeroProducto}")
     @PreAuthorize("hasRole('ADMIN')")
     fun update(
-        @PathVariable id: String,
+        @PathVariable numeroProducto: String,
         @RequestBody producto: Producto
     ): ResponseEntity<Producto> {
-        val actualizado = productoService.updateProducto(id, producto)
+        val actualizado = productoService.updateProducto(numeroProducto, producto)
         return ResponseEntity.ok(actualizado)
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{numeroProducto}")
     @PreAuthorize("hasRole('ADMIN')")
-    fun delete(@PathVariable id: String): ResponseEntity<Void> {
-        productoService.deleteProducto(id)
+    fun delete(@PathVariable numeroProducto: String): ResponseEntity<Void> {
+        productoService.deleteProducto(numeroProducto)
         return ResponseEntity.noContent().build()
     }
 }

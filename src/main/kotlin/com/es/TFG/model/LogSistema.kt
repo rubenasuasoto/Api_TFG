@@ -8,7 +8,7 @@ import java.util.Date
 @Document("collLogs")
 data class LogSistema(
     @Id val id: String? = null,
-    val usuario: String,
+    val usuario: String?,
     val accion: String,
     val referencia: String,
     val fecha: Date = Date.from(Instant.now())
