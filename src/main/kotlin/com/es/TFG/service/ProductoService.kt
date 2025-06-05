@@ -49,6 +49,6 @@ class ProductoService {
         productoRepository.findProductosBynumeroProducto(numeroProducto)
             .orElseThrow{ NotFoundException("Producto con numero $numeroProducto no encontrado")}
 
-        productoRepository.deletedProductoBynumeroProducto(numeroProducto)
+        productoRepository.deleteByNumeroProducto(numeroProducto)
     }
 }

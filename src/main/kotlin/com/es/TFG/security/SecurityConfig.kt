@@ -40,7 +40,7 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/productos").permitAll()
                     .requestMatchers(HttpMethod.POST, "/productos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/productos/{id}").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.DELETE, "/productos/{id}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/productos/{numeroProducto}").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/pedidos/self").authenticated()
                     .requestMatchers(HttpMethod.GET, "/pedidos/self").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/pedidos/self/{id}").authenticated()
