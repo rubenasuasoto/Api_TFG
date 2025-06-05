@@ -38,6 +38,9 @@ class PedidoService {
     fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
         val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${dto.numeroProducto} no encontrado") }
+        val usuario = usuarioRepository.findByUsername(username)
+            .orElseThrow { NotFoundException("Usuario con nombre ${username} no encontrado") }
+
 
 
         if (producto.stock <= 0) {
@@ -75,7 +78,7 @@ class PedidoService {
                 referencia = pedidoGuardado.numeroPedido ?: "SIN ID"
             )
         )
-
+        emailService.enviarConfirmacionPedido(usuario.email,nuevoPedido)
         return pedidoGuardado
 
     }

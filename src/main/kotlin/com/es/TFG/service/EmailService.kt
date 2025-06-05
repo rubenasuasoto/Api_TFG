@@ -5,32 +5,37 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.stereotype.Service
+import com.sendgrid.*
+import com.sendgrid.helpers.mail.Mail
+import com.sendgrid.helpers.mail.objects.Content
+import com.sendgrid.helpers.mail.objects.Email
 
 @Service
 class EmailService {
 
-    @Autowired
-    private lateinit var javaMailSender: JavaMailSender
+    private val sendGridApiKey = System.getenv("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") // O usa @Value si prefieres
 
     fun enviarConfirmacionPedido(destinatario: String, pedido: Pedido) {
-        val mensaje = SimpleMailMessage()
-        mensaje.setTo(destinatario)
-        mensaje.setSubject("Confirmación de Pedido ${pedido.numeroPedido}")
-        mensaje.setText(
-            """
-            Hola ${pedido.usuario},
-            
-            Tu pedido ha sido registrado con éxito.
+        val from = Email("tfgpruebaemail@gmail.com") // debe estar verificado en SendGrid
+        val to = Email(destinatario)
+        val subject = "Confirmación de pedido"
+        val content = Content("text/plain", "Tu pedido ha sido recibido: ${pedido.numeroPedido}")
+        val mail = Mail(from, subject, to, content)
 
-            Detalles:
-            - Artículo: ${pedido.articulo}
-            - Precio: ${pedido.precioFinal}
-            - Fecha: ${pedido.factura.fecha}
+        val sg = SendGrid(sendGridApiKey)
+        val request = Request()
 
-            Gracias por tu compra.
+        try {
+            request.method = Method.POST
+            request.endpoint = "mail/send"
+            request.body = mail.build()
+            val response = sg.api(request)
 
-            """.trimIndent()
-        )
-        javaMailSender.send(mensaje)
+            println("Status Code: ${response.statusCode}")
+            println("Response Body: ${response.body}")
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+            throw RuntimeException("Error enviando correo con SendGrid")
+        }
     }
 }
