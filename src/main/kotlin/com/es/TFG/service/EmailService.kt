@@ -9,11 +9,12 @@ import com.sendgrid.*
 import com.sendgrid.helpers.mail.Mail
 import com.sendgrid.helpers.mail.objects.Content
 import com.sendgrid.helpers.mail.objects.Email
+import org.springframework.beans.factory.annotation.Value
 
 @Service
 class EmailService {
-
-    private val sendGridApiKey = System.getenv("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") // O usa @Value si prefieres
+    @Value("\${sendgrid.api-key}")
+    private lateinit var sendGridApiKey: String
 
     fun enviarConfirmacionPedido(destinatario: String, pedido: Pedido) {
         val from = Email("tfgpruebaemail@gmail.com") // debe estar verificado en SendGrid
