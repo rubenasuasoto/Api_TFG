@@ -10,6 +10,7 @@ import com.es.TFG.model.Pedido
 import com.es.TFG.repository.LogSistemaRepository
 import com.es.TFG.repository.PedidoRepository
 import com.es.TFG.repository.ProductoRepository
+import com.es.TFG.repository.UsuarioRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -26,13 +27,18 @@ class PedidoService {
     @Autowired
     private lateinit var productoRepository: ProductoRepository
 
+    private lateinit var usuarioRepository: UsuarioRepository
+
     @Autowired
     private lateinit var logSistemaRepository: LogSistemaRepository
+
+    private lateinit var emailService: EmailService
 
 
     fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
         val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
             .orElseThrow { NotFoundException("Producto con id ${dto.numeroProducto} no encontrado") }
+
 
         if (producto.stock <= 0) {
             throw BadRequestException("Producto sin stock disponible")
@@ -77,6 +83,9 @@ class PedidoService {
         val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
             .orElseThrow { NotFoundException("Producto con número ${pedido.numeroProducto} no encontrado") }
 
+        val usuario = usuarioRepository.findByUsername(pedido.usuario)
+            .orElseThrow { NotFoundException("Usuario con nombre ${pedido.usuario} no encontrado") }
+
         if (producto.stock <= 0) {
             throw BadRequestException("Producto sin stock disponible")
         }
@@ -99,6 +108,7 @@ class PedidoService {
 
         val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
 
+
         logSistemaRepository.save(
             LogSistema(
                 usuario = pedido.usuario,
@@ -106,6 +116,9 @@ class PedidoService {
                 referencia = pedidoGuardado.numeroPedido ?: "SIN ID"
             )
         )
+
+
+        emailService.enviarConfirmacionPedido(usuario.email,pedido)
 
         return pedidoGuardado
     }
