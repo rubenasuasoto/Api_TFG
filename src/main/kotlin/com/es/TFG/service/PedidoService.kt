@@ -26,12 +26,12 @@ class PedidoService {
 
     @Autowired
     private lateinit var productoRepository: ProductoRepository
-
+    @Autowired
     private lateinit var usuarioRepository: UsuarioRepository
 
     @Autowired
     private lateinit var logSistemaRepository: LogSistemaRepository
-
+    @Autowired
     private lateinit var emailService: EmailService
 
 
