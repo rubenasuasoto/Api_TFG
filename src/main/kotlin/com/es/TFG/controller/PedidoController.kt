@@ -1,6 +1,5 @@
 ﻿package com.es.TFG.controller
 
-import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
 import com.es.TFG.dto.EstadoDTO
 import com.es.TFG.dto.PedidoDTO
 import com.es.TFG.model.Pedido

@@ -35,27 +35,45 @@ class SecurityConfig {
             .csrf { it.disable() }
             .authorizeHttpRequests { auth ->
                 auth
+                    // Endpoints públicos
                     .requestMatchers(HttpMethod.POST, "/usuarios/login").permitAll()
                     .requestMatchers(HttpMethod.POST, "/usuarios/register").permitAll()
                     .requestMatchers(HttpMethod.GET, "/productos").permitAll()
+
+                    // Endpoints de usuario (self)
+                    .requestMatchers(HttpMethod.GET, "/usuarios/self").authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/usuarios/self").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/usuarios/self").authenticated()
+
+                    // Endpoints de admin para usuarios
+                    .requestMatchers(HttpMethod.GET, "/usuarios").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/usuarios/{username}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/usuarios/{username}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/usuarios/{username}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/usuarios/check-admin").authenticated()
+                    // Endpoints de productos (admin)
                     .requestMatchers(HttpMethod.POST, "/productos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/productos/{id}").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/productos/{numeroProducto}").hasRole("ADMIN")
+
+                    // Endpoints de pedidos (self)
                     .requestMatchers(HttpMethod.POST, "/pedidos/self").authenticated()
                     .requestMatchers(HttpMethod.GET, "/pedidos/self").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/pedidos/self/{id}").authenticated()
+
+                    // Endpoints de pedidos (admin)
                     .requestMatchers(HttpMethod.GET, "/pedidos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/pedidos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/pedidos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/pedidos/{id}").hasRole("ADMIN")
+
+                    // Cualquier otra petición requiere autenticación
                     .anyRequest().authenticated()
             }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .oauth2ResourceServer { oauth2 ->
-                oauth2
-                    .jwt(Customizer.withDefaults())
+                oauth2.jwt(Customizer.withDefaults())
             }
-
             .build()
     }
 

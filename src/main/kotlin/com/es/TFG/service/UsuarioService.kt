@@ -3,9 +3,11 @@ package com.es.TFG.service
 
 import com.es.TFG.dto.UsuarioDTO
 import com.es.TFG.dto.UsuarioRegisterDTO
-import com.es.Api_Rest_Segura2.error.exception.BadRequestException
-import com.es.Api_Rest_Segura2.error.exception.ConflictException
-import com.es.Api_Rest_Segura2.error.exception.UnauthorizedException
+import com.es.TFG.dto.UsuarioUpdateDTO
+import com.es.TFG.error.exception.BadRequestException
+import com.es.TFG.error.exception.ConflictException
+import com.es.TFG.error.exception.NotFoundException
+import com.es.TFG.error.exception.UnauthorizedException
 import com.es.TFG.model.Usuario
 import com.es.TFG.repository.UsuarioRepository
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,7 +29,7 @@ class UsuarioService : UserDetailsService {
 
 
     override fun loadUserByUsername(username: String?): UserDetails {
-        var usuario: Usuario = usuarioRepository
+        val usuario: Usuario = usuarioRepository
             .findByUsername(username!!)
             .orElseThrow {
                 UnauthorizedException("$username no existente")
@@ -91,5 +93,75 @@ class UsuarioService : UserDetailsService {
 
 
 
+    }
+
+    // Métodos self
+    fun getUserByUsername(username: String): UsuarioDTO {
+        val usuario = usuarioRepository.findByUsername(username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+        return toDTO(usuario)
+    }
+
+    fun updateUserSelf(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
+        val usuario = usuarioRepository.findByUsername(username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+        // Validar contraseña actual si se quiere cambiar la contraseña
+        if (dto.newPassword != null) {
+            if (!passwordEncoder.matches(dto.currentPassword, usuario.password)) {
+                throw BadRequestException("Contraseña actual incorrecta")
+            }
+        }
+
+        val updatedUsuario = usuario.copy(
+            email = dto.email ?: usuario.email,
+            password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
+            direccion = dto.direccion ?: usuario.direccion
+        )
+
+        return toDTO(usuarioRepository.save(updatedUsuario))
+    }
+
+    fun deleteUserSelf(username: String) {
+        usuarioRepository.deleteByUsername(username)
+    }
+
+    // Métodos admin
+    fun getAllUsers(): List<UsuarioDTO> {
+        return usuarioRepository.findAll().map { toDTO(it) }
+    }
+
+    fun updateUserAdmin(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
+        val usuario = usuarioRepository.findByUsername(username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+        val updatedUsuario = usuario.copy(
+            email = dto.email ?: usuario.email,
+            password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
+            roles = dto.rol ?: usuario.roles,
+            direccion = dto.direccion ?: usuario.direccion
+        )
+
+        return toDTO(usuarioRepository.save(updatedUsuario))
+    }
+
+    fun deleteUserAdmin(username: String) {
+        usuarioRepository.deleteByUsername(username)
+    }
+    fun isAdmin(username: String): Boolean {
+        val usuario = usuarioRepository.findByUsername(username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+        return usuario.roles?.contains("ADMIN") ?: false
+    }
+
+    // Método auxiliar para convertir a DTO
+    private fun toDTO(usuario: Usuario): UsuarioDTO {
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            rol = usuario.roles,
+
+        )
     }
 }

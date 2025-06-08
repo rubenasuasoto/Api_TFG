@@ -8,28 +8,26 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.*
 
 @Service
 class TokenService {
-
     @Autowired
     private lateinit var jwtEncoder: JwtEncoder
 
-    fun generarToken(authentication: Authentication) : String {
+    fun generarToken(authentication: Authentication): String {
+        val roles = authentication.authorities
+            .joinToString(" ") { it.authority }
 
-        println("diediejdei")
-
-        val roles: String = authentication.authorities.joinToString(" ") { it.authority } // Contiene los roles del usuario
-
-        val payload: JwtClaimsSet = JwtClaimsSet.builder()
+        val claims = JwtClaimsSet.builder()
             .issuer("self")
             .issuedAt(Instant.now())
-            .expiresAt(Date().toInstant().plus(Duration.ofHours(1)))
+            .expiresAt(Instant.now().plus(1, ChronoUnit.HOURS))
             .subject(authentication.name)
-            .claim("roles", roles)
+            .claim("roles", roles) // Asegúrate que los roles están incluidos
             .build()
 
-        return jwtEncoder.encode(JwtEncoderParameters.from(payload)).tokenValue;
+        return jwtEncoder.encode(JwtEncoderParameters.from(claims)).tokenValue
     }
 }

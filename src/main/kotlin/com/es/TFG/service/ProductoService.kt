@@ -1,7 +1,7 @@
 ﻿package com.es.TFG.service
 
-import com.es.Api_Rest_Segura2.error.exception.BadRequestException
-import com.es.Api_Rest_Segura2.error.exception.NotFoundException
+import com.es.TFG.error.exception.BadRequestException
+import com.es.TFG.error.exception.NotFoundException
 import com.es.TFG.model.Producto
 import com.es.TFG.repository.ProductoRepository
 import org.springframework.beans.factory.annotation.Autowired
