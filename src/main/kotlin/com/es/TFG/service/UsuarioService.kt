@@ -27,12 +27,15 @@ class UsuarioService : UserDetailsService {
 
     @Autowired
     private lateinit var passwordEncoder: PasswordEncoder
+    @Autowired
+    private lateinit var externalApiService: ExternalApiService
 
     companion object {
         // Constantes para validaciones
         private const val MIN_PASSWORD_LENGTH = 8
         private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$")
         private val USERNAME_REGEX = Regex("^[a-zA-Z0-9._-]{3,20}\$")
+
 
         // Mensajes de error
         const val ERROR_USERNAME_VACIO = "El nombre de usuario no puede estar vacío"
@@ -77,6 +80,32 @@ class UsuarioService : UserDetailsService {
         log.info("Registrando nuevo usuario: ${usuarioInsertadoDTO.username}")
         try {
             validateUsuarioRegisterDTO(usuarioInsertadoDTO)
+
+            // Comprobar la provincia
+            val datosProvincias = externalApiService.obtenerProvinciasDesdeApi()
+            var cpro: String = ""
+            if(datosProvincias != null) {
+                if(datosProvincias.data != null) {
+                    val provinciaEncontrada = datosProvincias.data.stream().filter {
+                        it.PRO == usuarioInsertadoDTO.direccion.provincia.uppercase()
+                    }.findFirst().orElseThrow {
+                        BadRequestException("Provincia ${usuarioInsertadoDTO.direccion.provincia} no encontrada")
+                    }
+                    cpro = provinciaEncontrada.CPRO
+                }
+            }
+
+            // Comprobar el municipio
+            val datosMunicipios = externalApiService.obtenerMunicipiosDesdeApi(cpro)
+            if(datosMunicipios != null) {
+                if(datosMunicipios.data != null) {
+                    datosMunicipios.data.stream().filter {
+                        it.DMUN50 == usuarioInsertadoDTO.direccion.municipio.uppercase()
+                    }.findFirst().orElseThrow {
+                        BadRequestException("Municipio ${usuarioInsertadoDTO.direccion.municipio} incorrecto")
+                    }
+                }
+            }
 
             val usuario = Usuario(
                 _id = null,

@@ -10,5 +10,5 @@ data class UsuarioRegisterDTO(
     val password: String,
     val passwordRepeat: String,
     val rol: String?,
-    val direccion: Direccion?
+    val direccion: Direccion
 )

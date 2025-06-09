@@ -13,7 +13,7 @@ data class Usuario(
     val email: String,
     val roles: String? = "USER",
     val fechacrea: Date ,
-    val direccion: Direccion?
+    val direccion: Direccion
 
 )
 
