@@ -12,6 +12,7 @@ import com.es.TFG.repository.LogSistemaRepository
 import com.es.TFG.repository.PedidoRepository
 import com.es.TFG.repository.ProductoRepository
 import com.es.TFG.repository.UsuarioRepository
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -35,6 +36,7 @@ class PedidoService {
         const val ERROR_NO_AUTORIZADO = "No tienes permiso para esta acción"
         const val ERROR_PLAZO_CANCELACION = "No se puede cancelar: plazo de 3 días expirado"
         const val ERROR_ESTADO_NO_VALIDO = "Estado no válido. Use: PENDIENTE, COMPLETADO o CANCELADO"
+        private val log = LoggerFactory.getLogger(PedidoService::class.java)
     }
 
     @Autowired
@@ -49,155 +51,242 @@ class PedidoService {
     private lateinit var emailService: EmailService
 
     fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
-        // Validaciones iniciales
-        val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
-            .orElseThrow { NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO) }
+        log.info("Iniciando creación de pedido self para usuario: $username, producto: ${dto.numeroProducto}")
 
-        val usuario = usuarioRepository.findByUsername(username)
-            .orElseThrow { NotFoundException(ERROR_USUARIO_NO_ENCONTRADO) }
+        try {
+            val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
+                .orElseThrow {
+                    log.warn("Producto no encontrado: ${dto.numeroProducto}")
+                    NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO)
+                }
 
-        // Validar stock
-        if (producto.stock <= 0) {
-            throw BadRequestException(ERROR_SIN_STOCK)
+            log.debug("Producto encontrado: ${producto.numeroProducto}, stock actual: ${producto.stock}")
+
+            val usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow {
+                    log.warn("Usuario no encontrado: $username")
+                    NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+                }
+
+            if (producto.stock <= 0) {
+                log.warn("Intento de pedido sin stock. Producto: ${producto.numeroProducto}")
+                throw BadRequestException(ERROR_SIN_STOCK)
+            }
+
+            producto.stock -= 1
+            producto.fechaActualizacion = Date.from(Instant.now())
+            productoRepository.save(producto)
+            log.info("Stock actualizado. Nuevo stock: ${producto.stock}")
+
+            val pedido = Pedido(
+                numeroPedido = UUID.randomUUID().toString(),
+                numeroProducto = producto.numeroProducto,
+                usuario = username,
+                articulo = producto.articulo,
+                precioFinal = producto.precio,
+                factura = Factura(
+                    numeroFactura = UUID.randomUUID().toString(),
+                    fecha = Date.from(Instant.now())
+                ),
+                estado = ESTADO_PENDIENTE
+            )
+
+            val pedidoGuardado = pedidoRepository.insert(pedido)
+            log.info("Pedido creado exitosamente. ID: ${pedidoGuardado.numeroPedido}")
+
+            registrarAccion(pedidoGuardado, usuario, "PEDIDO CREADO (SELF)")
+
+            return pedidoGuardado
+
+        } catch (ex: Exception) {
+            log.error("Error al crear pedido self. Usuario: $username. Error: ${ex.message}", ex)
+            throw ex
         }
-
-        // Actualizar stock
-        producto.stock -= 1
-        producto.fechaActualizacion = Date.from(Instant.now())
-        productoRepository.save(producto)
-
-        // Crear pedido
-        val pedido = Pedido(
-            numeroPedido = UUID.randomUUID().toString(),
-            numeroProducto = producto.numeroProducto,
-            usuario = username,
-            articulo = producto.articulo,
-            precioFinal = producto.precio,
-            factura = Factura(
-                numeroFactura = UUID.randomUUID().toString(),
-                fecha = Date.from(Instant.now())
-            ),
-            estado = ESTADO_PENDIENTE
-        )
-
-        val pedidoGuardado = pedidoRepository.insert(pedido)
-
-        // Registrar log y enviar email
-        registrarAccion(pedidoGuardado, usuario, "PEDIDO CREADO (SELF)")
-
-        return pedidoGuardado
     }
 
     fun insertPedidoAdmin(pedido: Pedido): Pedido {
-        // Validaciones
-        val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
-            .orElseThrow { NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO) }
+        log.info("Iniciando creación de pedido admin para usuario: ${pedido.usuario}")
 
-        val usuario = usuarioRepository.findByUsername(pedido.usuario)
-            .orElseThrow { NotFoundException(ERROR_USUARIO_NO_ENCONTRADO) }
+        try {
+            val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
+                .orElseThrow {
+                    log.warn("Producto no encontrado: ${pedido.numeroProducto}")
+                    NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO)
+                }
 
-        if (producto.stock <= 0) {
-            throw BadRequestException(ERROR_SIN_STOCK)
+            val usuario = usuarioRepository.findByUsername(pedido.usuario)
+                .orElseThrow {
+                    log.warn("Usuario no encontrado: ${pedido.usuario}")
+                    NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+                }
+
+            if (producto.stock <= 0) {
+                log.warn("Intento de pedido admin sin stock. Producto: ${producto.numeroProducto}")
+                throw BadRequestException(ERROR_SIN_STOCK)
+            }
+
+            producto.stock -= 1
+            producto.fechaActualizacion = Date.from(Instant.now())
+            productoRepository.save(producto)
+            log.debug("Stock actualizado por admin. Nuevo stock: ${producto.stock}")
+
+            val nuevoPedido = pedido.copy(
+                numeroPedido = UUID.randomUUID().toString(),
+                articulo = producto.articulo,
+                precioFinal = producto.precio,
+                factura = pedido.factura.copy(
+                    numeroFactura = UUID.randomUUID().toString(),
+                    fecha = Date.from(Instant.now())
+                ),
+                estado = ESTADO_PENDIENTE,
+                fechaCreacion = Date.from(Instant.now())
+            )
+
+            val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
+            log.info("Pedido admin creado exitosamente. ID: ${pedidoGuardado.numeroPedido}")
+
+            registrarAccion(pedidoGuardado, usuario, "PEDIDO CREADO (ADMIN)")
+
+            return pedidoGuardado
+
+        } catch (ex: Exception) {
+            log.error("Error al crear pedido admin. Error: ${ex.message}", ex)
+            throw ex
         }
-
-        // Actualizar stock
-        producto.stock -= 1
-        producto.fechaActualizacion = Date.from(Instant.now())
-        productoRepository.save(producto)
-
-        // Crear pedido con datos limpios
-        val nuevoPedido = pedido.copy(
-            numeroPedido = UUID.randomUUID().toString(),
-            articulo = producto.articulo,
-            precioFinal = producto.precio,
-            factura = pedido.factura.copy(
-                numeroFactura = UUID.randomUUID().toString(),
-                fecha = Date.from(Instant.now())
-            ),
-            estado = ESTADO_PENDIENTE,
-            fechaCreacion = Date.from(Instant.now())
-        )
-
-        val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
-        registrarAccion(pedidoGuardado, usuario, "PEDIDO CREADO (ADMIN)")
-
-        return pedidoGuardado
     }
-
     fun updateEstadoPedido(id: String, nuevoEstado: String, usernameActual: String): Pedido {
-        validateEstado(nuevoEstado)
+        log.info("Actualizando estado de pedido. ID: $id, Nuevo estado: $nuevoEstado, Usuario: $usernameActual")
 
-        val pedido = pedidoRepository.findById(id)
-            .orElseThrow { NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO) }
+        try {
+            validateEstado(nuevoEstado)
 
-        // Validar permisos
-        if (pedido.usuario != usernameActual && !esAdmin(usernameActual)) {
-            throw UnauthorizedException(ERROR_NO_AUTORIZADO)
+            val pedido = pedidoRepository.findById(id)
+                .orElseThrow {
+                    log.warn("Pedido no encontrado para actualización: $id")
+                    NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO)
+                }
+
+            if (pedido.usuario != usernameActual && !esAdmin(usernameActual)) {
+                log.warn("Intento no autorizado de actualización. Usuario: $usernameActual, Dueño: ${pedido.usuario}")
+                throw UnauthorizedException(ERROR_NO_AUTORIZADO)
+            }
+
+            pedido.estado = nuevoEstado
+            val pedidoActualizado = pedidoRepository.save(pedido)
+            log.info("Estado actualizado exitosamente. Pedido: $id, Nuevo estado: $nuevoEstado")
+
+            return pedidoActualizado
+
+        } catch (ex: Exception) {
+            log.error("Error al actualizar estado del pedido $id. Error: ${ex.message}", ex)
+            throw ex
         }
-
-        pedido.estado = nuevoEstado
-        return pedidoRepository.save(pedido)
     }
+
 
     fun deletePedidoSelf(id: String, username: String) {
-        val pedido = pedidoRepository.findById(id)
-            .orElseThrow { NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO) }
+        log.info("Iniciando cancelación de pedido self. ID: $id, Usuario: $username")
 
-        // Validar propiedad
-        if (pedido.usuario != username) {
-            throw UnauthorizedException(ERROR_NO_AUTORIZADO)
+        try {
+            val pedido = pedidoRepository.findById(id)
+                .orElseThrow {
+                    log.warn("Pedido no encontrado para cancelación: $id")
+                    NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO)
+                }
+
+            if (pedido.usuario != username) {
+                log.warn("Intento no autorizado de cancelación. Usuario: $username, Dueño: ${pedido.usuario}")
+                throw UnauthorizedException(ERROR_NO_AUTORIZADO)
+            }
+
+            verificarPlazoCancelacion(pedido.fechaCreacion)
+            revertirPedido(pedido)
+            pedidoRepository.deleteById(id)
+            log.info("Pedido cancelado exitosamente. ID: $id")
+
+            registrarAccion(pedido, null, "PEDIDO CANCELADO (SELF)")
+
+        } catch (ex: Exception) {
+            log.error("Error al cancelar pedido $id. Error: ${ex.message}", ex)
+            throw ex
         }
-
-        verificarPlazoCancelacion(pedido.fechaCreacion)
-        revertirPedido(pedido)
-        pedidoRepository.deleteById(id)
-
-        registrarAccion(pedido, null, "PEDIDO CANCELADO (SELF)")
     }
 
     // --- Métodos auxiliares ---
-
     private fun esAdmin(username: String): Boolean {
+        log.debug("Verificando rol admin para usuario: $username")
         return usuarioRepository.findByUsername(username)
-            .orElseThrow { NotFoundException(ERROR_USUARIO_NO_ENCONTRADO) }
+            .orElseThrow {
+                log.warn("Usuario no encontrado al verificar admin: $username")
+                NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+            }
             .roles!!.contains("ADMIN")
+            .also { isAdmin ->
+                if (isAdmin) log.debug("Usuario $username es admin")
+                else log.debug("Usuario $username NO es admin")
+            }
     }
 
     private fun validateEstado(estado: String) {
+        log.debug("Validando estado: $estado")
         val estadosValidos = listOf(ESTADO_PENDIENTE, ESTADO_COMPLETADO, ESTADO_CANCELADO)
         if (!estadosValidos.contains(estado)) {
+            log.warn("Estado no válido proporcionado: $estado")
             throw BadRequestException(ERROR_ESTADO_NO_VALIDO)
         }
     }
 
     private fun revertirPedido(pedido: Pedido) {
-        val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
-            .orElseThrow { NotFoundException("Producto no encontrado") }
+        log.info("Revertiendo pedido. ID: ${pedido.numeroPedido}, Producto: ${pedido.numeroProducto}")
 
-        producto.stock += 1
-        producto.fechaActualizacion = Date.from(Instant.now())
-        productoRepository.save(producto)
+        try {
+            val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
+                .orElseThrow {
+                    log.error("Producto no encontrado al revertir pedido: ${pedido.numeroProducto}")
+                    NotFoundException("Producto no encontrado")
+                }
+
+            producto.stock += 1
+            producto.fechaActualizacion = Date.from(Instant.now())
+            productoRepository.save(producto)
+            log.info("Stock revertido. Producto: ${producto.numeroProducto}, Nuevo stock: ${producto.stock}")
+
+        } catch (ex: Exception) {
+            log.error("Error crítico al revertir pedido ${pedido.numeroPedido}", ex)
+            throw ex
+        }
     }
 
     private fun verificarPlazoCancelacion(fechaCreacion: Date) {
+        log.debug("Verificando plazo de cancelación. Fecha creación: $fechaCreacion")
         val tresDiasEnMilis = 3 * 24 * 60 * 60 * 1000L
         if (Date().time - fechaCreacion.time > tresDiasEnMilis) {
+            log.warn("Plazo de cancelación excedido. Fecha creación: $fechaCreacion")
             throw BadRequestException(ERROR_PLAZO_CANCELACION)
         }
     }
 
     private fun registrarAccion(pedido: Pedido, usuario: Usuario?, accion: String) {
-        logSistemaRepository.save(
-            LogSistema(
-                usuario = usuario?.username ?: "SISTEMA",
-                accion = accion,
-                referencia = pedido.numeroPedido ?: "SIN_ID",
-                fecha = Date.from(Instant.now())
-            )
-        )
+        log.debug("Registrando acción: $accion para pedido: ${pedido.numeroPedido}")
 
-        usuario?.email?.let { email ->
-            emailService.enviarConfirmacionPedido(email, pedido)
+        try {
+            logSistemaRepository.save(
+                LogSistema(
+                    usuario = usuario?.username ?: "SISTEMA",
+                    accion = accion,
+                    referencia = pedido.numeroPedido ?: "SIN_ID",
+                    fecha = Date.from(Instant.now())
+                )
+            )
+
+            usuario?.email?.let { email ->
+                log.debug("Enviando email de confirmación a: $email")
+                emailService.enviarConfirmacionPedido(email, pedido)
+            }
+
+        } catch (ex: Exception) {
+            log.error("Error al registrar acción $accion para pedido ${pedido.numeroPedido}", ex)
+
         }
     }
 }
