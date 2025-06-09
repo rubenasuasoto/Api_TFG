@@ -211,10 +211,63 @@ class PedidoService {
             throw ex
         }
     }
+    fun findAll(): List<Pedido> {
+        log.debug("Obteniendo todos los pedidos")
+        return pedidoRepository.findAll().also {
+            log.debug("Encontrados ${it.size} pedidos")
+        }
+    }
 
-    // --- Métodos auxiliares ---
+    fun findPedidosByUsuario(username: String): List<Pedido> {
+        log.debug("Buscando pedidos para el usuario: $username")
+        validateUsername(username)
+        return pedidoRepository.findPedidosByUsuario(username).also {
+            log.debug("Encontrados ${it.size} pedidos para el usuario $username")
+        }
+    }
+
+    fun findById(id: String): Pedido {
+        log.debug("Buscando pedido por ID: $id")
+        return pedidoRepository.findById(id)
+            .orElseThrow {
+                log.warn("Pedido no encontrado: $id")
+                NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO)
+            }
+            .also {
+                log.debug("Pedido encontrado: ${it.numeroPedido}")
+            }
+    }
+
+    fun deletePedido(id: String) {
+        log.info("Eliminando pedido (admin). ID: $id")
+        try {
+            val pedido = pedidoRepository.findById(id)
+                .orElseThrow {
+                    log.warn("Pedido no encontrado para eliminación: $id")
+                    NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO)
+                }
+
+            revertirPedido(pedido)
+            pedidoRepository.deleteById(id)
+            log.info("Pedido eliminado por admin. ID: $id")
+
+        } catch (ex: Exception) {
+            log.error("Error al eliminar pedido $id: ${ex.message}", ex)
+            throw ex
+        }
+    }
+
+    // --- Métodos auxiliares mejorados ---
+
+    private fun validateUsername(username: String) {
+        if (username.isBlank()) {
+            log.warn("Nombre de usuario vacío")
+            throw IllegalArgumentException("Nombre de usuario no puede estar vacío")
+        }
+    }
+
     private fun esAdmin(username: String): Boolean {
-        log.debug("Verificando rol admin para usuario: $username")
+        log.debug("Verificando si usuario es admin: $username")
         return usuarioRepository.findByUsername(username)
             .orElseThrow {
                 log.warn("Usuario no encontrado al verificar admin: $username")
@@ -231,19 +284,18 @@ class PedidoService {
         log.debug("Validando estado: $estado")
         val estadosValidos = listOf(ESTADO_PENDIENTE, ESTADO_COMPLETADO, ESTADO_CANCELADO)
         if (!estadosValidos.contains(estado)) {
-            log.warn("Estado no válido proporcionado: $estado")
+            log.warn("Estado no válido: $estado")
             throw BadRequestException(ERROR_ESTADO_NO_VALIDO)
         }
     }
 
     private fun revertirPedido(pedido: Pedido) {
-        log.info("Revertiendo pedido. ID: ${pedido.numeroPedido}, Producto: ${pedido.numeroProducto}")
-
+        log.info("Revertiendo pedido. ID: ${pedido.numeroPedido}")
         try {
             val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
                 .orElseThrow {
                     log.error("Producto no encontrado al revertir pedido: ${pedido.numeroProducto}")
-                    NotFoundException("Producto no encontrado")
+                    NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO)
                 }
 
             producto.stock += 1
@@ -252,7 +304,7 @@ class PedidoService {
             log.info("Stock revertido. Producto: ${producto.numeroProducto}, Nuevo stock: ${producto.stock}")
 
         } catch (ex: Exception) {
-            log.error("Error crítico al revertir pedido ${pedido.numeroPedido}", ex)
+            log.error("Error al revertir pedido ${pedido.numeroPedido}", ex)
             throw ex
         }
     }
@@ -261,14 +313,13 @@ class PedidoService {
         log.debug("Verificando plazo de cancelación. Fecha creación: $fechaCreacion")
         val tresDiasEnMilis = 3 * 24 * 60 * 60 * 1000L
         if (Date().time - fechaCreacion.time > tresDiasEnMilis) {
-            log.warn("Plazo de cancelación excedido. Fecha creación: $fechaCreacion")
+            log.warn("Plazo de cancelación excedido")
             throw BadRequestException(ERROR_PLAZO_CANCELACION)
         }
     }
 
     private fun registrarAccion(pedido: Pedido, usuario: Usuario?, accion: String) {
-        log.debug("Registrando acción: $accion para pedido: ${pedido.numeroPedido}")
-
+        log.debug("Registrando acción: $accion para pedido ${pedido.numeroPedido}")
         try {
             logSistemaRepository.save(
                 LogSistema(
@@ -278,15 +329,11 @@ class PedidoService {
                     fecha = Date.from(Instant.now())
                 )
             )
-
             usuario?.email?.let { email ->
-                log.debug("Enviando email de confirmación a: $email")
                 emailService.enviarConfirmacionPedido(email, pedido)
             }
-
         } catch (ex: Exception) {
-            log.error("Error al registrar acción $accion para pedido ${pedido.numeroPedido}", ex)
-
+            log.error("Error al registrar acción: ${ex.message}", ex)
         }
     }
 }

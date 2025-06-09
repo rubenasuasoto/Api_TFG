@@ -82,10 +82,10 @@ class PedidoController {
     @PreAuthorize("hasRole('ADMIN')")
     fun updatePedidoEstado(
         @PathVariable id: String,
-        @RequestBody nuevoEstado: EstadoDTO
+        @RequestBody nuevoEstado: EstadoDTO,
+        authentication: Authentication
     ): ResponseEntity<Pedido> {
-        val actualizado = pedidoService.updateEstadoPedido(id, nuevoEstado.estado)
+        val actualizado = pedidoService.updateEstadoPedido(id, nuevoEstado.estado, authentication.name)
         return ResponseEntity.ok(actualizado)
     }
-
 }

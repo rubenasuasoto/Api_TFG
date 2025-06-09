@@ -10,6 +10,7 @@ import com.es.TFG.error.exception.NotFoundException
 import com.es.TFG.error.exception.UnauthorizedException
 import com.es.TFG.model.Usuario
 import com.es.TFG.repository.UsuarioRepository
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
@@ -27,14 +28,13 @@ class UsuarioService : UserDetailsService {
     @Autowired
     private lateinit var passwordEncoder: PasswordEncoder
 
-    // Constantes para validaciones
     companion object {
         // Constantes para validaciones
         private const val MIN_PASSWORD_LENGTH = 8
         private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$")
         private val USERNAME_REGEX = Regex("^[a-zA-Z0-9._-]{3,20}\$")
 
-        // Mensajes de error centralizados
+        // Mensajes de error
         const val ERROR_USERNAME_VACIO = "El nombre de usuario no puede estar vacío"
         const val ERROR_EMAIL_VACIO = "El email no puede estar vacío"
         const val ERROR_PASSWORD_VACIO = "La contraseña no puede estar vacía"
@@ -50,13 +50,20 @@ class UsuarioService : UserDetailsService {
         const val ERROR_USUARIO_NO_ENCONTRADO = "Usuario no encontrado"
         const val ERROR_PASSWORD_ACTUAL_REQUERIDA = "Se requiere la contraseña actual para cambiar la contraseña"
         const val ERROR_PASSWORD_ACTUAL_INCORRECTA = "Contraseña actual incorrecta"
+        const val ERROR_NO_AUTORIZADO = "No autorizado para esta acción"
+
+        private val log = LoggerFactory.getLogger(UsuarioService::class.java)
     }
 
     override fun loadUserByUsername(username: String): UserDetails {
+        log.debug("Cargando usuario por username: $username")
         require(username.isNotBlank()) { ERROR_USERNAME_VACIO }
 
         val usuario = usuarioRepository.findByUsername(username)
-            .orElseThrow { UnauthorizedException(ERROR_USUARIO_NO_ENCONTRADO) }
+            .orElseThrow {
+                log.warn("Usuario no encontrado: $username")
+                UnauthorizedException(ERROR_USUARIO_NO_ENCONTRADO)
+            }
 
         return User.builder()
             .username(usuario.username)
@@ -65,62 +72,168 @@ class UsuarioService : UserDetailsService {
             .build()
     }
 
+    // Métodos de registro y autenticación
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
-        // Validaciones básicas
-        require(usuarioInsertadoDTO.username.isNotBlank()) { ERROR_USERNAME_VACIO }
-        require(usuarioInsertadoDTO.email.isNotBlank()) { ERROR_EMAIL_VACIO }
-        require(usuarioInsertadoDTO.password.isNotBlank()) { ERROR_PASSWORD_VACIO }
+        log.info("Registrando nuevo usuario: ${usuarioInsertadoDTO.username}")
+        try {
+            validateUsuarioRegisterDTO(usuarioInsertadoDTO)
 
-        // Validaciones de formato
-        validateUsername(usuarioInsertadoDTO.username)
-        validateEmail(usuarioInsertadoDTO.email)
-        validatePassword(usuarioInsertadoDTO.password)
+            val usuario = Usuario(
+                _id = null,
+                username = usuarioInsertadoDTO.username.trim(),
+                email = usuarioInsertadoDTO.email.trim().lowercase(),
+                password = passwordEncoder.encode(usuarioInsertadoDTO.password),
+                roles = usuarioInsertadoDTO.rol ?: "USER",
+                fechacrea = Date.from(Instant.now()),
+                direccion = usuarioInsertadoDTO.direccion
+            )
 
-        check(!usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
-            ERROR_USERNAME_EXISTE
+            val usuarioGuardado = usuarioRepository.save(usuario)
+            log.info("Usuario registrado exitosamente: ${usuario.username}")
+            return toDTO(usuarioGuardado)
+        } catch (ex: Exception) {
+            log.error("Error al registrar usuario: ${ex.message}", ex)
+            throw ex
         }
-
-        check(!usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
-            ERROR_EMAIL_EXISTE
-        }
-
-        check(usuarioInsertadoDTO.password == usuarioInsertadoDTO.passwordRepeat) {
-            ERROR_PASSWORDS_NO_COINCIDEN
-        }
-
-        check(usuarioInsertadoDTO.rol == null ||
-                usuarioInsertadoDTO.rol in listOf("USER", "ADMIN")) {
-            ERROR_ROL_NO_VALIDO
-        }
-
-        val usuario = Usuario(
-            _id = null,
-            username = usuarioInsertadoDTO.username.trim(),
-            email = usuarioInsertadoDTO.email.trim().lowercase(),
-            password = passwordEncoder.encode(usuarioInsertadoDTO.password),
-            roles = usuarioInsertadoDTO.rol ?: "USER",
-            fechacrea = Date.from(Instant.now()),
-            direccion = usuarioInsertadoDTO.direccion
-        )
-
-        val usuarioGuardado = usuarioRepository.save(usuario)
-        return toDTO(usuarioGuardado)
     }
 
-    // Métodos self
+    // Métodos para usuarios autenticados (self)
     fun getUserByUsername(username: String): UsuarioDTO {
+        log.debug("Obteniendo usuario: $username")
         validateUsername(username)
         val usuario = usuarioRepository.findByUsername(username)
-            .orElseThrow { NotFoundException("Usuario no encontrado") }
+            .orElseThrow {
+                log.warn("Usuario no encontrado: $username")
+                NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+            }
         return toDTO(usuario)
     }
 
     fun updateUserSelf(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
-        validateUsername(username)
-        val usuario = usuarioRepository.findByUsername(username)
-            .orElseThrow { NotFoundException("Usuario no encontrado") }
+        log.info("Actualizando usuario self: $username")
+        try {
+            validateUsername(username)
+            val usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow {
+                    log.warn("Usuario no encontrado para actualización: $username")
+                    NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+                }
 
-        // Validación de contraseña actual si se cambia la contraseña
+            validateUsuarioUpdateDTO(dto, usuario)
+
+            val updatedUsuario = usuario.copy(
+                email = dto.email?.trim()?.lowercase() ?: usuario.email,
+                password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
+                direccion = dto.direccion ?: usuario.direccion
+            )
+
+            return toDTO(usuarioRepository.save(updatedUsuario)).also {
+                log.info("Usuario actualizado exitosamente: $username")
+            }
+        } catch (ex: Exception) {
+            log.error("Error al actualizar usuario $username: ${ex.message}", ex)
+            throw ex
+        }
+    }
+
+    fun deleteUserSelf(username: String) {
+        log.info("Eliminando usuario self: $username")
+        try {
+            validateUsername(username)
+            if (!usuarioRepository.existsByUsername(username)) {
+                log.warn("Intento de eliminar usuario no existente: $username")
+                throw NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+            }
+            usuarioRepository.deleteByUsername(username)
+            log.info("Usuario eliminado exitosamente: $username")
+        } catch (ex: Exception) {
+            log.error("Error al eliminar usuario $username: ${ex.message}", ex)
+            throw ex
+        }
+    }
+
+    // Métodos para administradores
+    fun getAllUsers(): List<UsuarioDTO> {
+        log.debug("Obteniendo todos los usuarios")
+        return usuarioRepository.findAll().map { toDTO(it) }.also {
+            log.debug("Encontrados ${it.size} usuarios")
+        }
+    }
+
+    fun updateUserAdmin(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
+        log.info("Actualizando usuario como admin: $username")
+        try {
+            validateUsername(username)
+            val usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow {
+                    log.warn("Usuario no encontrado para actualización admin: $username")
+                    NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+                }
+
+            validateUsuarioUpdateDTO(dto, usuario, true)
+
+            val updatedUsuario = usuario.copy(
+                email = dto.email?.trim()?.lowercase() ?: usuario.email,
+                password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
+                roles = dto.rol ?: usuario.roles,
+                direccion = dto.direccion ?: usuario.direccion
+            )
+
+            return toDTO(usuarioRepository.save(updatedUsuario)).also {
+                log.info("Usuario actualizado por admin exitosamente: $username")
+            }
+        } catch (ex: Exception) {
+            log.error("Error al actualizar usuario $username como admin: ${ex.message}", ex)
+            throw ex
+        }
+    }
+
+    fun deleteUserAdmin(username: String) {
+        log.info("Eliminando usuario como admin: $username")
+        try {
+            validateUsername(username)
+            if (!usuarioRepository.existsByUsername(username)) {
+                log.warn("Intento de admin de eliminar usuario no existente: $username")
+                throw NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+            }
+            usuarioRepository.deleteByUsername(username)
+            log.info("Usuario eliminado por admin exitosamente: $username")
+        } catch (ex: Exception) {
+            log.error("Error al eliminar usuario $username como admin: ${ex.message}", ex)
+            throw ex
+        }
+    }
+
+    fun isAdmin(username: String): Boolean {
+        log.debug("Verificando si es admin: $username")
+        return usuarioRepository.findByUsername(username)
+            .orElseThrow {
+                log.warn("Usuario no encontrado al verificar admin: $username")
+                NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
+            }
+            .roles!!.contains("ADMIN").also {
+                log.debug("Usuario $username es admin: $it")
+            }
+    }
+
+    // Métodos de validación privados
+    private fun validateUsuarioRegisterDTO(dto: UsuarioRegisterDTO) {
+        require(dto.username.isNotBlank()) { ERROR_USERNAME_VACIO }
+        require(dto.email.isNotBlank()) { ERROR_EMAIL_VACIO }
+        require(dto.password.isNotBlank()) { ERROR_PASSWORD_VACIO }
+
+        validateUsername(dto.username)
+        validateEmail(dto.email)
+        validatePassword(dto.password)
+
+        check(!usuarioRepository.existsByUsername(dto.username)) { ERROR_USERNAME_EXISTE }
+        check(!usuarioRepository.existsByEmail(dto.email)) { ERROR_EMAIL_EXISTE }
+        check(dto.password == dto.passwordRepeat) { ERROR_PASSWORDS_NO_COINCIDEN }
+        check(dto.rol == null || dto.rol in listOf("USER", "ADMIN")) { ERROR_ROL_NO_VALIDO }
+    }
+
+    private fun validateUsuarioUpdateDTO(dto: UsuarioUpdateDTO, usuario: Usuario, isAdmin: Boolean = false) {
+        // Validación de contraseña
         if (dto.newPassword != null) {
             require(dto.currentPassword != null) { ERROR_PASSWORD_ACTUAL_REQUERIDA }
             require(passwordEncoder.matches(dto.currentPassword, usuario.password)) {
@@ -129,53 +242,22 @@ class UsuarioService : UserDetailsService {
             validatePassword(dto.newPassword)
         }
 
-        // Validación de email si se cambia
+        // Validación de email
         dto.email?.let {
             validateEmail(it)
-            check(!usuarioRepository.existsByEmailAndUsernameNot(it, username)) {
+            check(!usuarioRepository.existsByEmailAndUsernameNot(it, usuario.username)) {
                 ERROR_EMAIL_EXISTE
             }
         }
-        val updatedUsuario = usuario.copy(
-            email = dto.email?.trim()?.lowercase() ?: usuario.email,
-            password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
-            direccion = dto.direccion ?: usuario.direccion
-        )
 
-        return toDTO(usuarioRepository.save(updatedUsuario))
-    }
-
-    // Métodos admin
-    fun updateUserAdmin(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
-        validateUsername(username)
-        val usuario = usuarioRepository.findByUsername(username)
-            .orElseThrow { NotFoundException("Usuario no encontrado") }
-
-        // Validaciones adicionales para admin
-        dto.rol?.let {
-            check(it in listOf("USER", "ADMIN")) { "Rol no válido" }
-        }
-
-        dto.email?.let { email ->
-            validateEmail(email)
-            check(!usuarioRepository.existsByEmailAndUsernameNot(email, username)) {
-                "El email ya está registrado por otro usuario"
+        // Validación de rol (solo para admin)
+        if (isAdmin) {
+            dto.rol?.let {
+                check(it in listOf("USER", "ADMIN")) { ERROR_ROL_NO_VALIDO }
             }
         }
-
-        dto.newPassword?.let { validatePassword(it) }
-
-        val updatedUsuario = usuario.copy(
-            email = dto.email?.trim()?.lowercase() ?: usuario.email,
-            password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
-            roles = dto.rol ?: usuario.roles,
-            direccion = dto.direccion ?: usuario.direccion
-        )
-
-        return toDTO(usuarioRepository.save(updatedUsuario))
     }
 
-    // Métodos de validación privados
     private fun validateUsername(username: String) {
         require(username.matches(USERNAME_REGEX)) { ERROR_FORMATO_USERNAME }
     }
@@ -194,7 +276,9 @@ class UsuarioService : UserDetailsService {
         return UsuarioDTO(
             username = usuario.username,
             email = usuario.email,
-            rol = usuario.roles
-        )
+            rol = usuario.roles,
+
+                )
+            }
+
     }
-}
