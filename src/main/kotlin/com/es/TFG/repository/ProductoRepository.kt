@@ -11,5 +11,5 @@ interface ProductoRepository : MongoRepository<Producto, String> {
     fun findProductosBynumeroProducto(numeroProducto: String): Optional<Producto>
 
     fun deleteByNumeroProducto(numeroProducto: String): Long
-
+    fun existsByNumeroProducto(numeroProducto: String): Boolean
 }
