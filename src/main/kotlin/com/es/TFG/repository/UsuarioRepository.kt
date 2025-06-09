@@ -14,4 +14,6 @@ interface UsuarioRepository : MongoRepository<Usuario, String> {
     fun deleteByUsername(username: String)
     fun existsByUsername(username: String): Boolean
     fun existsByEmail(email: String): Boolean
+
+    fun existsByEmailAndUsernameNot(email: String,username: String): Boolean
 }

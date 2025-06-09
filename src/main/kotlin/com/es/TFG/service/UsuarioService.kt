@@ -18,22 +18,45 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.*
-
 @Service
 class UsuarioService : UserDetailsService {
 
     @Autowired
     private lateinit var usuarioRepository: UsuarioRepository
+
     @Autowired
     private lateinit var passwordEncoder: PasswordEncoder
 
+    // Constantes para validaciones
+    companion object {
+        // Constantes para validaciones
+        private const val MIN_PASSWORD_LENGTH = 8
+        private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$")
+        private val USERNAME_REGEX = Regex("^[a-zA-Z0-9._-]{3,20}\$")
 
-    override fun loadUserByUsername(username: String?): UserDetails {
-        val usuario: Usuario = usuarioRepository
-            .findByUsername(username!!)
-            .orElseThrow {
-                UnauthorizedException("$username no existente")
-            }
+        // Mensajes de error centralizados
+        const val ERROR_USERNAME_VACIO = "El nombre de usuario no puede estar vacío"
+        const val ERROR_EMAIL_VACIO = "El email no puede estar vacío"
+        const val ERROR_PASSWORD_VACIO = "La contraseña no puede estar vacía"
+        const val ERROR_USERNAME_EXISTE = "El nombre de usuario ya está registrado"
+        const val ERROR_EMAIL_EXISTE = "El email ya está registrado"
+        const val ERROR_PASSWORDS_NO_COINCIDEN = "Las contraseñas no coinciden"
+        const val ERROR_ROL_NO_VALIDO = "Rol no válido. Debe ser USER o ADMIN"
+        const val ERROR_FORMATO_USERNAME = "Nombre de usuario no válido. Debe tener entre 3 y 20 caracteres alfanuméricos"
+        const val ERROR_FORMATO_EMAIL = "Formato de email no válido"
+        const val ERROR_LONGITUD_PASSWORD = "La contraseña debe tener al menos $MIN_PASSWORD_LENGTH caracteres"
+        const val ERROR_PASSWORD_NUMERO = "La contraseña debe contener al menos un número"
+        const val ERROR_PASSWORD_CARACTER_ESPECIAL = "La contraseña debe contener al menos un carácter especial"
+        const val ERROR_USUARIO_NO_ENCONTRADO = "Usuario no encontrado"
+        const val ERROR_PASSWORD_ACTUAL_REQUERIDA = "Se requiere la contraseña actual para cambiar la contraseña"
+        const val ERROR_PASSWORD_ACTUAL_INCORRECTA = "Contraseña actual incorrecta"
+    }
+
+    override fun loadUserByUsername(username: String): UserDetails {
+        require(username.isNotBlank()) { ERROR_USERNAME_VACIO }
+
+        val usuario = usuarioRepository.findByUsername(username)
+            .orElseThrow { UnauthorizedException(ERROR_USUARIO_NO_ENCONTRADO) }
 
         return User.builder()
             .username(usuario.username)
@@ -42,80 +65,79 @@ class UsuarioService : UserDetailsService {
             .build()
     }
 
-    fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO) : UsuarioDTO? {
-        // comprobar que ningun campo esta vacio
-        if (usuarioInsertadoDTO.username.isBlank() ||
-            usuarioInsertadoDTO.email.isBlank() ||
-            usuarioInsertadoDTO.password.isBlank() ||
-            usuarioInsertadoDTO.passwordRepeat.isBlank()) {
-            throw BadRequestException("uno o mas campos vacios")
-        }
-        // comprobar que no existe el nombre del usuario
-        if(usuarioRepository.findByUsername(usuarioInsertadoDTO.username).isPresent) {
-            throw ConflictException("Usuario ${usuarioInsertadoDTO.username} ya está registrado")
+    fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
+        // Validaciones básicas
+        require(usuarioInsertadoDTO.username.isNotBlank()) { ERROR_USERNAME_VACIO }
+        require(usuarioInsertadoDTO.email.isNotBlank()) { ERROR_EMAIL_VACIO }
+        require(usuarioInsertadoDTO.password.isNotBlank()) { ERROR_PASSWORD_VACIO }
+
+        // Validaciones de formato
+        validateUsername(usuarioInsertadoDTO.username)
+        validateEmail(usuarioInsertadoDTO.email)
+        validatePassword(usuarioInsertadoDTO.password)
+
+        check(!usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
+            ERROR_USERNAME_EXISTE
         }
 
-        // comprobar que ambas passwords sean iguales
-        if(usuarioInsertadoDTO.password != usuarioInsertadoDTO.passwordRepeat) {
-            throw BadRequestException("Las contrasenias no coinciden")
+        check(!usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
+            ERROR_EMAIL_EXISTE
         }
 
-        // Comprobar el ROL
-        if(usuarioInsertadoDTO.rol != null && usuarioInsertadoDTO.rol != "USER" && usuarioInsertadoDTO.rol != "ADMIN" ) {
-            throw BadRequestException("ROL: ${usuarioInsertadoDTO.rol} incorrecto")
+        check(usuarioInsertadoDTO.password == usuarioInsertadoDTO.passwordRepeat) {
+            ERROR_PASSWORDS_NO_COINCIDEN
         }
-        //Comprobar el email
-        if(usuarioRepository.findByEmail(usuarioInsertadoDTO.email).isPresent) {
-            throw ConflictException("El email ${usuarioInsertadoDTO.email} ya está registrado")
+
+        check(usuarioInsertadoDTO.rol == null ||
+                usuarioInsertadoDTO.rol in listOf("USER", "ADMIN")) {
+            ERROR_ROL_NO_VALIDO
         }
 
         val usuario = Usuario(
-            null,
-            username = usuarioInsertadoDTO.username,
-            email = usuarioInsertadoDTO.email,
+            _id = null,
+            username = usuarioInsertadoDTO.username.trim(),
+            email = usuarioInsertadoDTO.email.trim().lowercase(),
             password = passwordEncoder.encode(usuarioInsertadoDTO.password),
-            roles = usuarioInsertadoDTO.rol,
+            roles = usuarioInsertadoDTO.rol ?: "USER",
             fechacrea = Date.from(Instant.now()),
             direccion = usuarioInsertadoDTO.direccion
-
-
-
         )
-        usuarioRepository.insert(usuario)
 
-      return UsuarioDTO(
-          email = usuario.email,
-          username = usuario.username,
-          rol = usuario.roles
-      )
-
-
-
-
-
+        val usuarioGuardado = usuarioRepository.save(usuario)
+        return toDTO(usuarioGuardado)
     }
 
     // Métodos self
     fun getUserByUsername(username: String): UsuarioDTO {
+        validateUsername(username)
         val usuario = usuarioRepository.findByUsername(username)
             .orElseThrow { NotFoundException("Usuario no encontrado") }
-
         return toDTO(usuario)
     }
 
     fun updateUserSelf(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
+        validateUsername(username)
         val usuario = usuarioRepository.findByUsername(username)
             .orElseThrow { NotFoundException("Usuario no encontrado") }
 
-        // Validar contraseña actual si se quiere cambiar la contraseña
+        // Validación de contraseña actual si se cambia la contraseña
         if (dto.newPassword != null) {
-            if (!passwordEncoder.matches(dto.currentPassword, usuario.password)) {
-                throw BadRequestException("Contraseña actual incorrecta")
+            require(dto.currentPassword != null) { ERROR_PASSWORD_ACTUAL_REQUERIDA }
+            require(passwordEncoder.matches(dto.currentPassword, usuario.password)) {
+                ERROR_PASSWORD_ACTUAL_INCORRECTA
             }
+            validatePassword(dto.newPassword)
         }
 
+        // Validación de email si se cambia
+        dto.email?.let {
+            validateEmail(it)
+            check(!usuarioRepository.existsByEmailAndUsernameNot(it, username)) {
+                ERROR_EMAIL_EXISTE
+            }
+        }
         val updatedUsuario = usuario.copy(
-            email = dto.email ?: usuario.email,
+            email = dto.email?.trim()?.lowercase() ?: usuario.email,
             password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
             direccion = dto.direccion ?: usuario.direccion
         )
@@ -123,21 +145,28 @@ class UsuarioService : UserDetailsService {
         return toDTO(usuarioRepository.save(updatedUsuario))
     }
 
-    fun deleteUserSelf(username: String) {
-        usuarioRepository.deleteByUsername(username)
-    }
-
     // Métodos admin
-    fun getAllUsers(): List<UsuarioDTO> {
-        return usuarioRepository.findAll().map { toDTO(it) }
-    }
-
     fun updateUserAdmin(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
+        validateUsername(username)
         val usuario = usuarioRepository.findByUsername(username)
             .orElseThrow { NotFoundException("Usuario no encontrado") }
 
+        // Validaciones adicionales para admin
+        dto.rol?.let {
+            check(it in listOf("USER", "ADMIN")) { "Rol no válido" }
+        }
+
+        dto.email?.let { email ->
+            validateEmail(email)
+            check(!usuarioRepository.existsByEmailAndUsernameNot(email, username)) {
+                "El email ya está registrado por otro usuario"
+            }
+        }
+
+        dto.newPassword?.let { validatePassword(it) }
+
         val updatedUsuario = usuario.copy(
-            email = dto.email ?: usuario.email,
+            email = dto.email?.trim()?.lowercase() ?: usuario.email,
             password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
             roles = dto.rol ?: usuario.roles,
             direccion = dto.direccion ?: usuario.direccion
@@ -146,22 +175,26 @@ class UsuarioService : UserDetailsService {
         return toDTO(usuarioRepository.save(updatedUsuario))
     }
 
-    fun deleteUserAdmin(username: String) {
-        usuarioRepository.deleteByUsername(username)
-    }
-    fun isAdmin(username: String): Boolean {
-        val usuario = usuarioRepository.findByUsername(username)
-            .orElseThrow { NotFoundException("Usuario no encontrado") }
-        return usuario.roles?.contains("ADMIN") ?: false
+    // Métodos de validación privados
+    private fun validateUsername(username: String) {
+        require(username.matches(USERNAME_REGEX)) { ERROR_FORMATO_USERNAME }
     }
 
-    // Método auxiliar para convertir a DTO
+    private fun validateEmail(email: String) {
+        require(email.matches(EMAIL_REGEX)) { ERROR_FORMATO_EMAIL }
+    }
+
+    private fun validatePassword(password: String) {
+        require(password.length >= MIN_PASSWORD_LENGTH) { ERROR_LONGITUD_PASSWORD }
+        require(password.any { it.isDigit() }) { ERROR_PASSWORD_NUMERO }
+        require(password.any { !it.isLetterOrDigit() }) { ERROR_PASSWORD_CARACTER_ESPECIAL }
+    }
+
     private fun toDTO(usuario: Usuario): UsuarioDTO {
         return UsuarioDTO(
             username = usuario.username,
             email = usuario.email,
-            rol = usuario.roles,
-
+            rol = usuario.roles
         )
     }
 }
