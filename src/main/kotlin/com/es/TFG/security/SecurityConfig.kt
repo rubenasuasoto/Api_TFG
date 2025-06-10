@@ -39,6 +39,7 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/usuarios/login").permitAll()
                     .requestMatchers(HttpMethod.POST, "/usuarios/register").permitAll()
                     .requestMatchers(HttpMethod.GET, "/productos").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/productos/search").permitAll()
 
                     // Endpoints de usuario (self)
                     .requestMatchers(HttpMethod.GET, "/usuarios/self").authenticated()

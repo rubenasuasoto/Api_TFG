@@ -79,6 +79,10 @@ class ProductoService {
                 log.debug("Producto encontrado: ${it.numeroProducto}")
             }
     }
+    fun buscarPorArticulo(query: String): List<Producto> {
+        return productoRepository.findByArticuloContainingIgnoreCase(query)
+    }
+
 
     fun updateProducto(numeroProducto: String, productoActualizado: Producto): Producto {
         log.info("Actualizando producto: $numeroProducto")

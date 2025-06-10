@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -36,6 +37,12 @@ class ProductoController {
     @GetMapping("/{numeroProducto}")
     fun getBynumeroProducto(@PathVariable numeroProducto: String): ResponseEntity<Producto> =
         ResponseEntity.ok(productoService.findProductosBynumeroProducto(numeroProducto))
+
+    @GetMapping("/search")
+    fun buscarPorArticulo(@RequestParam query: String): ResponseEntity<List<Producto>> {
+        val resultados = productoService.buscarPorArticulo(query)
+        return ResponseEntity.ok(resultados)
+    }
 
     @PutMapping("/{numeroProducto}")
     @PreAuthorize("hasRole('ADMIN')")

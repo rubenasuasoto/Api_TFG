@@ -7,7 +7,8 @@ import java.util.Optional
 
 @Repository
 interface ProductoRepository : MongoRepository<Producto, String> {
-    fun findProductosByArticulo(articulo: String): List<Producto>
+    fun findByArticuloContainingIgnoreCase(query: String): List<Producto>
+
     fun findProductosBynumeroProducto(numeroProducto: String): Optional<Producto>
 
     fun deleteByNumeroProducto(numeroProducto: String): Long
