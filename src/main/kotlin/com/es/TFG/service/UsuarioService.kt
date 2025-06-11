@@ -113,7 +113,7 @@ class UsuarioService : UserDetailsService {
                 email = usuarioInsertadoDTO.email.trim().lowercase(),
                 password = passwordEncoder.encode(usuarioInsertadoDTO.password),
                 roles = usuarioInsertadoDTO.rol ?: "USER",
-                fechacrea = Date.from(Instant.now()),
+                fechacrea = usuarioInsertadoDTO.fechacrea,
                 direccion = usuarioInsertadoDTO.direccion
             )
 
