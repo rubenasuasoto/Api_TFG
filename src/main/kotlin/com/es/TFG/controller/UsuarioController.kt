@@ -96,7 +96,9 @@ class UsuarioController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     fun getAll(): ResponseEntity<List<UsuarioDTO>> {
-        return ResponseEntity.ok(usuarioService.getAllUsers())
+        val usuario= usuarioService.getAllUsers()
+
+        return ResponseEntity.ok(usuario)
     }
 
     @GetMapping("/{username}")
