@@ -4,39 +4,71 @@ import com.es.TFG.model.Pedido
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
+import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.stereotype.Service
-import com.sendgrid.*
-import com.sendgrid.helpers.mail.Mail
-import com.sendgrid.helpers.mail.objects.Content
-import com.sendgrid.helpers.mail.objects.Email
-import org.springframework.beans.factory.annotation.Value
-
 @Service
-class EmailService {
-    @Value("\${sendgrid.api-key}")
-    private lateinit var sendGridApiKey: String
-
+class EmailService(
+    @Autowired private val javaMailSender: JavaMailSender
+) {
     fun enviarConfirmacionPedido(destinatario: String, pedido: Pedido) {
-        val from = Email("tfgpruebaemail@gmail.com") // debe estar verificado en SendGrid
-        val to = Email(destinatario)
-        val subject = "Confirmación de pedido"
-        val content = Content("text/plain", "Tu pedido ha sido recibido: ${pedido.numeroPedido}")
-        val mail = Mail(from, subject, to, content)
-
-        val sg = SendGrid(sendGridApiKey)
-        val request = Request()
-
         try {
-            request.method = Method.POST
-            request.endpoint = "mail/send"
-            request.body = mail.build()
-            val response = sg.api(request)
+            val message = javaMailSender.createMimeMessage()
+            val helper = MimeMessageHelper(message, true, "UTF-8")
 
-            println("Status Code: ${response.statusCode}")
-            println("Response Body: ${response.body}")
+            helper.setFrom("tfgpruebaemail@gmail.com")
+            helper.setTo(destinatario)
+            helper.setSubject("🧾 Confirmación de tu pedido")
+
+            val htmlContent = buildHtmlContenido(pedido)
+            helper.setText(htmlContent, true)
+
+            javaMailSender.send(message)
+            println("✅ Correo HTML enviado a $destinatario")
+
         } catch (ex: Exception) {
             ex.printStackTrace()
-            throw RuntimeException("Error enviando correo con SendGrid")
+            throw RuntimeException("❌ Error al enviar correo HTML")
         }
+    }
+
+    private fun buildHtmlContenido(pedido: Pedido): String {
+        val productosHtml = pedido.detalles.joinToString(separator = "") { detalle ->
+            """
+            <tr>
+                <td>${detalle.articulo}</td>
+                <td style="text-align: right;">€${"%.2f".format(detalle.precio)}</td>
+            </tr>
+            """
+        }
+
+        return """
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Gracias por tu pedido, ${pedido.usuario}!</h2>
+                <p>Hemos recibido tu pedido correctamente.</p>
+                
+                <p><strong>Número de pedido:</strong> ${pedido.numeroPedido}</p>
+                <p><strong>Fecha:</strong> ${pedido.fechaCreacion}</p>
+
+                <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Producto</th>
+                            <th style="text-align: right;">Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        $productosHtml
+                    </tbody>
+                </table>
+
+                <p style="margin-top: 16px;"><strong>Total:</strong> €${"%.2f".format(pedido.precioFinal)}</p>
+                <p><strong>Estado inicial:</strong> ${pedido.estado}</p>
+
+                <hr>
+                <p style="font-size: 0.9em;">Este es un correo automático de confirmación. No respondas a este mensaje.</p>
+            </body>
+        </html>
+        """
     }
 }
