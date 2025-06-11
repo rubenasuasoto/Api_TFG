@@ -153,7 +153,7 @@ class UsuarioService : UserDetailsService {
             val updatedUsuario = usuario.copy(
                 email = dto.email?.trim()?.lowercase() ?: usuario.email,
                 password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
-                direccion = dto.direccion
+                direccion = dto.direccion?: usuario.direccion
             )
 
             return toDTO(usuarioRepository.save(updatedUsuario)).also {
@@ -205,7 +205,7 @@ class UsuarioService : UserDetailsService {
                 email = dto.email?.trim()?.lowercase() ?: usuario.email,
                 password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
                 roles = dto.rol ?: usuario.roles,
-                direccion = dto.direccion
+                direccion = dto.direccion?: usuario.direccion
             )
 
             return toDTO(usuarioRepository.save(updatedUsuario)).also {
