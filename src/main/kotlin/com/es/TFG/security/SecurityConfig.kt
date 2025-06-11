@@ -60,13 +60,13 @@ class SecurityConfig {
                     // Endpoints de pedidos (self)
                     .requestMatchers(HttpMethod.POST, "/pedidos/self").authenticated()
                     .requestMatchers(HttpMethod.GET, "/pedidos/self").authenticated()
-                    .requestMatchers(HttpMethod.DELETE, "/pedidos/self/{id}").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/pedidos/self/{numeroPedido}").authenticated()
 
                     // Endpoints de pedidos (admin)
                     .requestMatchers(HttpMethod.GET, "/pedidos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/pedidos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT, "/pedidos").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.DELETE, "/pedidos/{id}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/pedidos/{numeroPedido}").hasRole("ADMIN")
 
                     // Cualquier otra petición requiere autenticación
                     .anyRequest().authenticated()

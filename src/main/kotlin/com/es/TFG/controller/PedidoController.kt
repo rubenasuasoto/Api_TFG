@@ -42,12 +42,13 @@ class PedidoController {
         return ResponseEntity.ok(pedidos)
     }
 
-    @DeleteMapping("/self/{id}")
-    fun deletePedidoSelf(@PathVariable id: String): ResponseEntity<Void> {
+    @DeleteMapping("/self/{numeroPedido}")
+    fun deletePedidoSelf(@PathVariable numeroPedido: String): ResponseEntity<Void> {
         val username = SecurityContextHolder.getContext().authentication.name
-        pedidoService.deletePedidoSelf(id, username)
+        pedidoService.deletePedidoSelf(numeroPedido, username)
         return ResponseEntity.noContent().build()
     }
+
 
     // ADMIN
 
@@ -56,12 +57,13 @@ class PedidoController {
     fun getAll(): ResponseEntity<List<Pedido>> =
         ResponseEntity.ok(pedidoService.findAll())
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{numeroPedido}")
     @PreAuthorize("hasRole('ADMIN')")
-    fun deletePedido(@PathVariable id: String): ResponseEntity<Void> {
-        pedidoService.deletePedido(id)
+    fun deletePedido(@PathVariable numeroPedido: String): ResponseEntity<Void> {
+        pedidoService.deletePedido(numeroPedido)
         return ResponseEntity.noContent().build()
     }
+
     // Obtener pedido por ID (solo admin)
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

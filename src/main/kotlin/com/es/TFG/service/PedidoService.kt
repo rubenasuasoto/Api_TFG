@@ -220,33 +220,34 @@ class PedidoService {
     }
 
 
-    fun deletePedidoSelf(id: String, username: String) {
-        log.info("Iniciando cancelación de pedido self. ID: $id, Usuario: $username")
+    fun deletePedidoSelf(numeroPedido: String, username: String) {
+        log.info("Iniciando cancelación de pedido self. Nº Pedido: $numeroPedido, Usuario: $username")
 
         try {
-            val pedido = pedidoRepository.findById(id)
+            val pedido = pedidoRepository.findByNumeroPedido(numeroPedido)
                 .orElseThrow {
-                    log.warn("Pedido no encontrado para cancelación: $id")
+                    log.warn("Pedido no encontrado para cancelación: $numeroPedido")
                     NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO)
                 }
 
             if (pedido.usuario != username) {
-                log.warn("Intento no autorizado de cancelación. Usuario: $username, Dueño: ${pedido.usuario}")
+                log.warn("Intento no autorizado. Usuario: $username, Dueño: ${pedido.usuario}")
                 throw UnauthorizedException(ERROR_NO_AUTORIZADO)
             }
 
             verificarPlazoCancelacion(pedido.fechaCreacion)
             revertirPedido(pedido)
-            pedidoRepository.deleteById(id)
-            log.info("Pedido cancelado exitosamente. ID: $id")
+            pedidoRepository.delete(pedido)
 
+            log.info("✅ Pedido cancelado exitosamente. Nº Pedido: $numeroPedido")
             registrarAccion(pedido, null, "PEDIDO CANCELADO (SELF)")
 
         } catch (ex: Exception) {
-            log.error("Error al cancelar pedido $id. Error: ${ex.message}", ex)
+            log.error("❌ Error al cancelar pedido $numeroPedido. ${ex.message}", ex)
             throw ex
         }
     }
+
     fun findAll(): List<Pedido> {
         log.debug("Obteniendo todos los pedidos")
         return pedidoRepository.findAll().also {
@@ -274,24 +275,27 @@ class PedidoService {
             }
     }
 
-    fun deletePedido(id: String) {
-        log.info("Eliminando pedido (admin). ID: $id")
+    fun deletePedido(numeroPedido: String) {
+        log.info("Eliminando pedido (admin). Nº Pedido: $numeroPedido")
+
         try {
-            val pedido = pedidoRepository.findById(id)
+            val pedido = pedidoRepository.findByNumeroPedido(numeroPedido)
                 .orElseThrow {
-                    log.warn("Pedido no encontrado para eliminación: $id")
+                    log.warn("Pedido no encontrado: $numeroPedido")
                     NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO)
                 }
 
             revertirPedido(pedido)
-            pedidoRepository.deleteById(id)
-            log.info("Pedido eliminado por admin. ID: $id")
+            pedidoRepository.delete(pedido)
+
+            log.info("✅ Pedido eliminado por admin. Nº Pedido: $numeroPedido")
 
         } catch (ex: Exception) {
-            log.error("Error al eliminar pedido $id: ${ex.message}", ex)
+            log.error("❌ Error al eliminar pedido $numeroPedido: ${ex.message}", ex)
             throw ex
         }
     }
+
 
     // --- Métodos auxiliares mejorados ---
 
