@@ -207,6 +207,9 @@ class PedidoService {
                 throw UnauthorizedException(ERROR_NO_AUTORIZADO)
             }
 
+
+
+
             pedido.estado = nuevoEstado
             val actualizado = pedidoRepository.save(pedido)
             log.info("✅ Estado actualizado. Pedido: $numeroPedido → $nuevoEstado")

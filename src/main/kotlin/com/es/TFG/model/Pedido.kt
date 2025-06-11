@@ -8,7 +8,9 @@ import java.util.Date
 
 @Document("collPedidos")
 data class Pedido(
-    @BsonId val numeroPedido: String?,
+    @BsonId
+    val id: String? = null,
+    val numeroPedido: String,
     val productos: List<String> = emptyList(),
     val usuario: String?,
     var detalles: List<ProductoDTO> = emptyList(),
