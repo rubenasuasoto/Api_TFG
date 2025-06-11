@@ -4,6 +4,7 @@ import com.es.TFG.error.exception.BadRequestException
 import com.es.TFG.error.exception.NotFoundException
 import com.es.TFG.error.exception.UnauthorizedException
 import com.es.TFG.dto.PedidoDTO
+import com.es.TFG.dto.ProductoDTO
 import com.es.TFG.model.Factura
 import com.es.TFG.model.LogSistema
 import com.es.TFG.model.Pedido
@@ -51,90 +52,124 @@ class PedidoService {
     private lateinit var emailService: EmailService
 
     fun insertPedidoSelf(dto: PedidoDTO, username: String): Pedido {
-        log.info("Iniciando creación de pedido self para usuario: $username, producto: ${dto.numeroProducto}")
+        log.info("🛒 Iniciando creación de pedido con múltiples productos para usuario: $username")
 
         try {
-            val producto = productoRepository.findProductosBynumeroProducto(dto.numeroProducto)
-                .orElseThrow {
-                    log.warn("Producto no encontrado: ${dto.numeroProducto}")
-                    NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO)
-                }
-
-            log.debug("Producto encontrado: ${producto.numeroProducto}, stock actual: ${producto.stock}")
-
             val usuario = usuarioRepository.findByUsername(username)
                 .orElseThrow {
                     log.warn("Usuario no encontrado: $username")
                     NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
                 }
 
-            if (producto.stock <= 0) {
-                log.warn("Intento de pedido sin stock. Producto: ${producto.numeroProducto}")
-                throw BadRequestException(ERROR_SIN_STOCK)
+            if (dto.productos.isEmpty()) {
+                log.warn("Intento de crear pedido sin productos")
+                throw BadRequestException("Debe incluir al menos un producto")
             }
 
-            producto.stock -= 1
-            producto.fechaActualizacion = Date.from(Instant.now())
-            productoRepository.save(producto)
-            log.info("Stock actualizado. Nuevo stock: ${producto.stock}")
+            val productos = mutableListOf<ProductoDTO>()
+            val productosUnicos = dto.productos.toSet()
+
+            productosUnicos.forEach { numeroProducto ->
+                val producto = productoRepository.findProductosBynumeroProducto(numeroProducto)
+                    .orElseThrow {
+                        log.warn("Producto no encontrado: $numeroProducto")
+                        NotFoundException("$ERROR_PRODUCTO_NO_ENCONTRADO ($numeroProducto)")
+                    }
+
+                if (producto.stock <= 0) {
+                    log.warn("Producto sin stock: ${producto.numeroProducto}")
+                    throw BadRequestException("$ERROR_SIN_STOCK (${producto.numeroProducto})")
+                }
+
+                producto.stock -= 1
+                producto.fechaActualizacion = Date.from(Instant.now())
+                productoRepository.save(producto)
+                log.info("📦 Stock actualizado para ${producto.numeroProducto}: ${producto.stock}")
+
+                productos.add(
+                    ProductoDTO(
+                        numeroProducto = producto.numeroProducto,
+                        articulo = producto.articulo ?: "Sin nombre",
+                        precio = producto.precio
+                    )
+                )
+            }
 
             val pedido = Pedido(
                 numeroPedido = UUID.randomUUID().toString(),
-                numeroProducto = producto.numeroProducto,
+                productos = dto.productos,
                 usuario = username,
-                articulo = producto.articulo,
-                precioFinal = producto.precio,
-                factura = Factura(
-                    numeroFactura = UUID.randomUUID().toString(),
-                    fecha = Date.from(Instant.now())
-                ),
+                detalles = productos,
+                precioFinal = dto.precioFinal,
+                factura = Factura(numeroFactura = UUID.randomUUID().toString()),
                 estado = ESTADO_PENDIENTE
             )
 
             val pedidoGuardado = pedidoRepository.insert(pedido)
-            log.info("Pedido creado exitosamente. ID: ${pedidoGuardado.numeroPedido}")
+            log.info("✅ Pedido guardado con éxito: ${pedidoGuardado.numeroPedido}")
 
             registrarAccion(pedidoGuardado, usuario, "PEDIDO CREADO (SELF)")
 
             return pedidoGuardado
 
         } catch (ex: Exception) {
-            log.error("Error al crear pedido self. Usuario: $username. Error: ${ex.message}", ex)
+            log.error("❌ Error al crear pedido de múltiples productos para $username: ${ex.message}", ex)
             throw ex
         }
     }
 
+
     fun insertPedidoAdmin(pedido: Pedido): Pedido {
-        log.info("Iniciando creación de pedido admin para usuario: ${pedido.usuario}")
+        log.info("🛒 Iniciando creación de pedido admin para usuario: ${pedido.usuario}")
 
         try {
-            val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
-                .orElseThrow {
-                    log.warn("Producto no encontrado: ${pedido.numeroProducto}")
-                    NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO)
-                }
-
             val usuario = usuarioRepository.findByUsername(pedido.usuario)
                 .orElseThrow {
                     log.warn("Usuario no encontrado: ${pedido.usuario}")
                     NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
                 }
 
-            if (producto.stock <= 0) {
-                log.warn("Intento de pedido admin sin stock. Producto: ${producto.numeroProducto}")
-                throw BadRequestException(ERROR_SIN_STOCK)
+            if (pedido.productos.isEmpty()) {
+                log.warn("Pedido admin con productos vacíos")
+                throw BadRequestException("Debe incluir al menos un producto")
             }
 
-            producto.stock -= 1
-            producto.fechaActualizacion = Date.from(Instant.now())
-            productoRepository.save(producto)
-            log.debug("Stock actualizado por admin. Nuevo stock: ${producto.stock}")
+            val productos = mutableListOf<ProductoDTO>()
+            var precioTotal = 0.0
+
+            pedido.productos.toSet().forEach { numeroProducto ->
+                val producto = productoRepository.findProductosBynumeroProducto(numeroProducto)
+                    .orElseThrow {
+                        log.warn("Producto no encontrado: $numeroProducto")
+                        NotFoundException("$ERROR_PRODUCTO_NO_ENCONTRADO ($numeroProducto)")
+                    }
+
+                if (producto.stock <= 0) {
+                    log.warn("Intento admin de pedido sin stock: $numeroProducto")
+                    throw BadRequestException("$ERROR_SIN_STOCK ($numeroProducto)")
+                }
+
+                producto.stock -= 1
+                producto.fechaActualizacion = Date.from(Instant.now())
+                productoRepository.save(producto)
+
+                productos.add(
+                    ProductoDTO(
+                        numeroProducto = producto.numeroProducto,
+                        articulo = producto.articulo ?: "Sin nombre",
+                        precio = producto.precio
+                    )
+                )
+
+                precioTotal += producto.precio
+                log.debug("Stock actualizado admin para $numeroProducto → ${producto.stock}")
+            }
 
             val nuevoPedido = pedido.copy(
                 numeroPedido = UUID.randomUUID().toString(),
-                articulo = producto.articulo,
-                precioFinal = producto.precio,
-                factura = pedido.factura.copy(
+                detalles = productos,
+                precioFinal = precioTotal,
+                factura = Factura(
                     numeroFactura = UUID.randomUUID().toString(),
                     fecha = Date.from(Instant.now())
                 ),
@@ -143,17 +178,18 @@ class PedidoService {
             )
 
             val pedidoGuardado = pedidoRepository.insert(nuevoPedido)
-            log.info("Pedido admin creado exitosamente. ID: ${pedidoGuardado.numeroPedido}")
+            log.info("✅ Pedido admin creado con éxito. ID: ${pedidoGuardado.numeroPedido}")
 
             registrarAccion(pedidoGuardado, usuario, "PEDIDO CREADO (ADMIN)")
 
             return pedidoGuardado
 
         } catch (ex: Exception) {
-            log.error("Error al crear pedido admin. Error: ${ex.message}", ex)
+            log.error("❌ Error al crear pedido admin: ${ex.message}", ex)
             throw ex
         }
     }
+
     fun updateEstadoPedido(id: String, nuevoEstado: String, usernameActual: String): Pedido {
         log.info("Actualizando estado de pedido. ID: $id, Nuevo estado: $nuevoEstado, Usuario: $usernameActual")
 
@@ -290,24 +326,27 @@ class PedidoService {
     }
 
     private fun revertirPedido(pedido: Pedido) {
-        log.info("Revertiendo pedido. ID: ${pedido.numeroPedido}")
+        log.info("↩️ Revirtiendo stock del pedido. ID: ${pedido.numeroPedido}")
         try {
-            val producto = productoRepository.findProductosBynumeroProducto(pedido.numeroProducto)
-                .orElseThrow {
-                    log.error("Producto no encontrado al revertir pedido: ${pedido.numeroProducto}")
-                    NotFoundException(ERROR_PRODUCTO_NO_ENCONTRADO)
-                }
+            pedido.productos.toSet().forEach { numeroProducto ->
+                val producto = productoRepository.findProductosBynumeroProducto(numeroProducto)
+                    .orElseThrow {
+                        log.error("❌ Producto no encontrado al revertir: $numeroProducto")
+                        NotFoundException("$ERROR_PRODUCTO_NO_ENCONTRADO ($numeroProducto)")
+                    }
 
-            producto.stock += 1
-            producto.fechaActualizacion = Date.from(Instant.now())
-            productoRepository.save(producto)
-            log.info("Stock revertido. Producto: ${producto.numeroProducto}, Nuevo stock: ${producto.stock}")
+                producto.stock += 1
+                producto.fechaActualizacion = Date.from(Instant.now())
+                productoRepository.save(producto)
 
+                log.info("✅ Stock revertido para $numeroProducto → nuevo stock: ${producto.stock}")
+            }
         } catch (ex: Exception) {
-            log.error("Error al revertir pedido ${pedido.numeroPedido}", ex)
+            log.error("❌ Error al revertir productos del pedido ${pedido.numeroPedido}", ex)
             throw ex
         }
     }
+
 
     private fun verificarPlazoCancelacion(fechaCreacion: Date) {
         log.debug("Verificando plazo de cancelación. Fecha creación: $fechaCreacion")
