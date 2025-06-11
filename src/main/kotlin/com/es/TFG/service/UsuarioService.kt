@@ -151,6 +151,7 @@ class UsuarioService : UserDetailsService {
             validateUsuarioUpdateDTO(dto, usuario)
 
             val updatedUsuario = usuario.copy(
+
                 email = dto.email?.trim()?.lowercase() ?: usuario.email,
                 password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
                 direccion = dto.direccion?: usuario.direccion
