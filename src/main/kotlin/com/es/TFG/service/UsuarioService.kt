@@ -80,7 +80,7 @@ class UsuarioService : UserDetailsService {
         log.info("Registrando nuevo usuario: ${usuarioInsertadoDTO.username}")
         try {
             validateUsuarioRegisterDTO(usuarioInsertadoDTO)
-
+/*
             // Comprobar la provincia
             val datosProvincias = externalApiService.obtenerProvinciasDesdeApi()
             var cpro: String = ""
@@ -106,7 +106,7 @@ class UsuarioService : UserDetailsService {
                     }
                 }
             }
-
+*/
             val usuario = Usuario(
                 _id = null,
                 username = usuarioInsertadoDTO.username.trim(),
