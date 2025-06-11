@@ -80,14 +80,14 @@ class PedidoController {
         return ResponseEntity(nuevoPedido, HttpStatus.CREATED)
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{numeroPedido}")
     @PreAuthorize("hasRole('ADMIN')")
     fun updatePedidoEstado(
-        @PathVariable id: String,
+        @PathVariable numeroPedido: String,
         @RequestBody nuevoEstado: EstadoDTO,
         authentication: Authentication
     ): ResponseEntity<Pedido> {
-        val actualizado = pedidoService.updateEstadoPedido(id, nuevoEstado.estado, authentication.name)
+        val actualizado = pedidoService.updateEstadoPedido(numeroPedido, nuevoEstado.estado, authentication.name)
         return ResponseEntity.ok(actualizado)
     }
 }

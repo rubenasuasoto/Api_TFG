@@ -190,34 +190,35 @@ class PedidoService {
         }
     }
 
-    fun updateEstadoPedido(id: String, nuevoEstado: String, usernameActual: String): Pedido {
-        log.info("Actualizando estado de pedido. ID: $id, Nuevo estado: $nuevoEstado, Usuario: $usernameActual")
+    fun updateEstadoPedido(numeroPedido: String, nuevoEstado: String, usernameActual: String): Pedido {
+        log.info("Actualizando estado de pedido. Nº Pedido: $numeroPedido, Nuevo estado: $nuevoEstado, Usuario: $usernameActual")
 
         try {
             validateEstado(nuevoEstado)
 
-            val pedido = pedidoRepository.findById(id)
+            val pedido = pedidoRepository.findByNumeroPedido(numeroPedido)
                 .orElseThrow {
-                    log.warn("Pedido no encontrado para actualización: $id")
+                    log.warn("Pedido no encontrado: $numeroPedido")
                     NotFoundException(ERROR_PEDIDO_NO_ENCONTRADO)
                 }
 
             if (pedido.usuario != usernameActual && !esAdmin(usernameActual)) {
-                log.warn("Intento no autorizado de actualización. Usuario: $usernameActual, Dueño: ${pedido.usuario}")
+                log.warn("Intento no autorizado. Usuario: $usernameActual, Dueño: ${pedido.usuario}")
                 throw UnauthorizedException(ERROR_NO_AUTORIZADO)
             }
 
             pedido.estado = nuevoEstado
-            val pedidoActualizado = pedidoRepository.save(pedido)
-            log.info("Estado actualizado exitosamente. Pedido: $id, Nuevo estado: $nuevoEstado")
+            val actualizado = pedidoRepository.save(pedido)
+            log.info("✅ Estado actualizado. Pedido: $numeroPedido → $nuevoEstado")
 
-            return pedidoActualizado
+            return actualizado
 
         } catch (ex: Exception) {
-            log.error("Error al actualizar estado del pedido $id. Error: ${ex.message}", ex)
+            log.error("❌ Error al actualizar estado $numeroPedido: ${ex.message}", ex)
             throw ex
         }
     }
+
 
 
     fun deletePedidoSelf(numeroPedido: String, username: String) {

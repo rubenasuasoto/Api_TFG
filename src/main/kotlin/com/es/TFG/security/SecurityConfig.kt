@@ -54,7 +54,7 @@ class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/usuarios/check-admin").authenticated()
                     // Endpoints de productos (admin)
                     .requestMatchers(HttpMethod.POST, "/productos").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.PUT, "/productos/{id}").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/productos/{numeroProducto}").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/productos/{numeroProducto}").hasRole("ADMIN")
 
                     // Endpoints de pedidos (self)
@@ -65,7 +65,7 @@ class SecurityConfig {
                     // Endpoints de pedidos (admin)
                     .requestMatchers(HttpMethod.GET, "/pedidos").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/pedidos").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.PUT, "/pedidos").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/pedidos/{numeroPedido}").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/pedidos/{numeroPedido}").hasRole("ADMIN")
 
                     // Cualquier otra petición requiere autenticación
