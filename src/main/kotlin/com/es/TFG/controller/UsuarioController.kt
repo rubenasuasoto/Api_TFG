@@ -7,6 +7,7 @@ import com.es.TFG.dto.UsuarioDTO
 import com.es.TFG.dto.UsuarioRegisterDTO
 import com.es.TFG.error.exception.UnauthorizedException
 import com.es.TFG.dto.UsuarioUpdateDTO
+import com.es.TFG.model.Usuario
 import com.es.TFG.service.TokenService
 import com.es.TFG.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
@@ -73,7 +74,7 @@ class UsuarioController {
     }
     // Endpoints para usuarios autenticados (self)
     @GetMapping("/self")
-    fun getSelf(authentication: Authentication): ResponseEntity<UsuarioDTO> {
+    fun getSelf(authentication: Authentication): ResponseEntity<Usuario> {
         return ResponseEntity.ok(usuarioService.getUserByUsername(authentication.name))
     }
 
@@ -100,7 +101,7 @@ class UsuarioController {
 
     @GetMapping("/{username}")
     @PreAuthorize("hasRole('ADMIN')")
-    fun getByUsername(@PathVariable username: String): ResponseEntity<UsuarioDTO> {
+    fun getByUsername(@PathVariable username: String): ResponseEntity<Usuario> {
         return ResponseEntity.ok(usuarioService.getUserByUsername(username))
     }
 

@@ -5,7 +5,6 @@ import com.es.TFG.dto.UsuarioDTO
 import com.es.TFG.dto.UsuarioRegisterDTO
 import com.es.TFG.dto.UsuarioUpdateDTO
 import com.es.TFG.error.exception.BadRequestException
-import com.es.TFG.error.exception.ConflictException
 import com.es.TFG.error.exception.NotFoundException
 import com.es.TFG.error.exception.UnauthorizedException
 import com.es.TFG.model.Usuario
@@ -19,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.*
+
 @Service
 class UsuarioService : UserDetailsService {
 
@@ -33,8 +33,8 @@ class UsuarioService : UserDetailsService {
     companion object {
         // Constantes para validaciones
         private const val MIN_PASSWORD_LENGTH = 8
-        private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$")
-        private val USERNAME_REGEX = Regex("^[a-zA-Z0-9._-]{3,20}\$")
+        private val EMAIL_REGEX = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")
+        private val USERNAME_REGEX = Regex("^[a-zA-Z0-9._-]{3,20}$")
 
 
         // Mensajes de error
@@ -127,7 +127,7 @@ class UsuarioService : UserDetailsService {
     }
 
     // Métodos para usuarios autenticados (self)
-    fun getUserByUsername(username: String): UsuarioDTO {
+    fun getUserByUsername(username: String): Usuario {
         log.debug("Obteniendo usuario: $username")
         validateUsername(username)
         val usuario = usuarioRepository.findByUsername(username)
@@ -135,7 +135,7 @@ class UsuarioService : UserDetailsService {
                 log.warn("Usuario no encontrado: $username")
                 NotFoundException(ERROR_USUARIO_NO_ENCONTRADO)
             }
-        return toDTO(usuario)
+        return usuario
     }
 
     fun updateUserSelf(username: String, dto: UsuarioUpdateDTO): UsuarioDTO {
@@ -153,7 +153,7 @@ class UsuarioService : UserDetailsService {
             val updatedUsuario = usuario.copy(
                 email = dto.email?.trim()?.lowercase() ?: usuario.email,
                 password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
-                direccion = dto.direccion ?: usuario.direccion
+                direccion = dto.direccion
             )
 
             return toDTO(usuarioRepository.save(updatedUsuario)).also {
@@ -205,7 +205,7 @@ class UsuarioService : UserDetailsService {
                 email = dto.email?.trim()?.lowercase() ?: usuario.email,
                 password = dto.newPassword?.let { passwordEncoder.encode(it) } ?: usuario.password,
                 roles = dto.rol ?: usuario.roles,
-                direccion = dto.direccion ?: usuario.direccion
+                direccion = dto.direccion
             )
 
             return toDTO(usuarioRepository.save(updatedUsuario)).also {
