@@ -220,3 +220,7 @@ Cada error contiene un mensaje y la URI del endpoint afectado.
 - Tests unitarios 
 - Generación automática de documentación 
 - Exportación a PDF de facturas
+
+
+---
+Debido al tamaño de los videos se mostrara en la denfensa del proyecto 
