@@ -26,7 +26,7 @@ class PedidoService {
     companion object {
         // Estados
         const val ESTADO_PENDIENTE = "PENDIENTE"
-        const val ESTADO_COMPLETADO = "COMPLETADO"
+        const val ESTADO_ENTREGADO = "ENTREGADO"
         const val ESTADO_CANCELADO = "CANCELADO"
 
         // Mensajes de error
@@ -36,7 +36,7 @@ class PedidoService {
         const val ERROR_PEDIDO_NO_ENCONTRADO = "Pedido no encontrado"
         const val ERROR_NO_AUTORIZADO = "No tienes permiso para esta acción"
         const val ERROR_PLAZO_CANCELACION = "No se puede cancelar: plazo de 3 días expirado"
-        const val ERROR_ESTADO_NO_VALIDO = "Estado no válido. Use: PENDIENTE, COMPLETADO o CANCELADO"
+        const val ERROR_ESTADO_NO_VALIDO = "Estado no válido. Use: PENDIENTE, ENTREGADO o CANCELADO"
         private val log = LoggerFactory.getLogger(PedidoService::class.java)
     }
 
@@ -326,7 +326,7 @@ class PedidoService {
 
     private fun validateEstado(estado: String) {
         log.debug("Validando estado: $estado")
-        val estadosValidos = listOf(ESTADO_PENDIENTE, ESTADO_COMPLETADO, ESTADO_CANCELADO)
+        val estadosValidos = listOf(ESTADO_PENDIENTE, ESTADO_ENTREGADO, ESTADO_CANCELADO)
         if (!estadosValidos.contains(estado)) {
             log.warn("Estado no válido: $estado")
             throw BadRequestException(ERROR_ESTADO_NO_VALIDO)
